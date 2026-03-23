@@ -1,9 +1,12 @@
-- {{query (property type project) }}
-  query-table:: true
-  query-properties:: [:page :type :tags :state :description]
-- {{query (property type book)}}
-  query-table:: false
-  query-properties:: [:page :type :tags :state :author]
-- {{query (property type course)}}
-  query-table:: true
-  query-properties:: [:page :type :tags :state]
+## Projects
+	- {{query (and (property type project) (not (property template)))}}
+	  query-table:: true
+	  query-properties:: [:page :type :tags :state :description]
+- ## Books
+	- {{query (and (property type book) (not (property template)))}}
+	  query-table:: false
+	  query-properties:: [:page :type :tags :state :author]
+- ## Courses
+	- {{query (and (property type course) (not (property template)))}}
+	  query-table:: true
+	  query-properties:: [:page :type :tags :state]
