@@ -2,7 +2,7 @@
   type:: #zettelkasten
   state:: #zettelkasten/literature
 - ## Linear algebra and quantum mechanics
-	- **Note:** In [[Quantum Computation and Quantum Information]], for presentation purposes, all vector spaces are assumed to be finite dimensional.
+	- **Note:** For presentation purposes, all vector spaces are assumed to be finite dimensional.
 	- ### Operators
 		- A *positive* operator: 
 		  $\forall A. \forall |\psi\rangle. \langle\psi| A|\psi\rangle\gt 0$
@@ -25,7 +25,7 @@
 			- Note: here I'm using angle brackets to denote a set.
 			- Note: the subscripts are equivalent.
 - ## Information theory and probability
-	- Note: in [[Quantum Computation and Quantum Information]], logarithms are assumed to be taken to base two, thus $\log x$ denotes logarithms to base 2.
+	- Note: Logarithms are assumed to be taken to base two, thus $\log x$ denotes logarithms to base 2.
 	- ### Definitions
 		- *Probability distributions*:
 		  $p_x\in\mathcal{P}_\text{fin}(\mathbb{R}). p_x\ge 0\land \sum_x p_x=1$
