@@ -10,9 +10,9 @@ template:: book
   date::
   state:: #zettelkasten/fleeting
   template:: zettelkasten/fleeting
-- reference
+- **note description**
   type:: #zettelkasten
   tags::
   date::
-  state:: #zettelkasten/reference
-  template:: zettelkasten/reference
+  state:: #zettelkasten/literature
+  template:: zettelkasten/literature
