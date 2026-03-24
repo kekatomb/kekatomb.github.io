@@ -25,7 +25,7 @@
 			- Note: here I'm using angle brackets to denote a set.
 			- Note: the subscripts are equivalent.
 - ## Information theory and probability
-	- Note: Logarithms are assumed to be taken to base two, thus $\log x$ denotes logarithms to base 2.
+	- **Note:** Logarithms are assumed to be taken to base two, thus $\log x$ denotes logarithms to base 2.
 	- ### Definitions
 		- *Probability distributions*:
 		  $p_x\in\mathcal{P}_\text{fin}(\mathbb{R}). p_x\ge 0\land \sum_x p_x=1$
