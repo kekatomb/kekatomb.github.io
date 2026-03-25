@@ -10,3 +10,5 @@
 	- {{query (and (property type course) (not (property template)))}}
 	  query-table:: true
 	  query-properties:: [:page :type :tags :state]
+- ## Today's Journal
+	- {{query (page-property :journal-day)}}

@@ -420,6 +420,6 @@
  ;;      ;use Percent-encoding for other invalid characters
  :file/name-format :triple-lowbar
  :publishing/all-pages-public? true
- :feature/enable-journals? true
+ :feature/enable-journals? false
  :default-home {:page "readme"}
  :feature/enable-whiteboards? false}
