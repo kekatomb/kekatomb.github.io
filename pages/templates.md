@@ -4,27 +4,40 @@ author::
 state::
 template:: book
 
-- TODO **description**
-  type:: #zettelkasten
-  tags:: 
-  state:: #zettelkasten/permanent
-  template:: zettelkasten/permanent
-  :LOGBOOK:
-  CLOCK: [2026-03-25 Wed 08:18:13]
-  CLOCK: [2026-03-25 Wed 08:18:27]--[2026-03-25 Wed 08:18:28] =>  00:00:01
-  CLOCK: [2026-03-25 Wed 08:18:28]
-  :END:
-	- type:: #zettelkasten
-	  state:: #zettelkasten/reference
-	  link::
-	  template:: zettelkasten/reference
+- ## Capture
 	- TODO **description**
-	  type:: #zettelkasten
-	  state:: #zettelkasten/literature
-	  template:: zettelkasten/literature
-		-
+	  type:: #source/video
+	  author:: 
+	  source:: 
+	  timestamps::
+	  template:: capture/video
 	- TODO **description**
+	  type:: #source/book
+	  author:: 
+	  source:: 
+	  pages::
+	  template:: capture/book
+	- TODO **description**
+	  type:: #source/audio
+	  author:: 
+	  source:: 
+	  timestamps::
+	  template:: capture/audio
+- ## Zettelkasten
+	- **description**
 	  type:: #zettelkasten
-	  state:: #zettelkasten/fleeting
-	  template:: zettelkasten/fleeting
-		-
+	  tags:: 
+	  state:: #zettelkasten/permanent
+	  template:: zettelkasten/permanent
+		- type:: #zettelkasten
+		  state:: #zettelkasten/reference
+		  link::
+		  template:: zettelkasten/reference
+		- **description**
+		  type:: #zettelkasten
+		  state:: #zettelkasten/literature
+		  template:: zettelkasten/literature
+		- **description**
+		  type:: #zettelkasten
+		  state:: #zettelkasten/fleeting
+		  template:: zettelkasten/fleeting
