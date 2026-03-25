@@ -1,5 +1,5 @@
 - #+BEGIN_QUERY
-  {:title [:a {:href "#/journals"} "View all Journals"]
+  {:title [:a {:href "#/all-journals"} "View all Journals"]
    :query [:find (pull ?p [*])
            :where
            [?p :block/journal? true]]
