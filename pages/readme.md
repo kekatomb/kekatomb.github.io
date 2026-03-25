@@ -1,6 +1,5 @@
 # Välkommen!
 - */²vɛːlˌkɔmːɛn/*
-  ---
 - I cannot be bothered to write an introduction at this time, so let your imagination run wild!
   ---
 - #+BEGIN_QUERY
