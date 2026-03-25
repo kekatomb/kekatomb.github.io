@@ -2,7 +2,8 @@
 - */²vɛːlˌkɔmːɛn/*
 - I cannot be bothered to write an introduction at this time, so let your imagination run wild!
   ---
-- #+BEGIN_QUERY
+- query-properties:: [:page :updated-at :created-at]
+  #+BEGIN_QUERY
   {:title [:a {:href "#/all-journals"} "View all Journals"]
    :query [:find (pull ?p [*])
            :where
