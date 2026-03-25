@@ -6,19 +6,19 @@ template:: book
 
 - ## Capture
 	- TODO **description**
-	  type:: #source/video
+	  type:: #capture/video
 	  author:: 
 	  source:: 
 	  timestamps::
 	  template:: capture/video
 	- TODO **description**
-	  type:: #source/book
+	  type:: #capture/book
 	  author:: 
 	  source:: 
 	  pages::
 	  template:: capture/book
 	- TODO **description**
-	  type:: #source/audio
+	  type:: #capture/audio
 	  author:: 
 	  source:: 
 	  timestamps::
