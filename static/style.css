@@ -1,0 +1,546 @@
+/* Styling copied from aspen.llia.cc. */
+
+html {
+  color: #222;
+  background: linear-gradient(#eee, #ddd);
+  min-height: 100svh;
+  font-family: Helvetica, Arial, sans-serif;
+}
+
+body {
+  filter: drop-shadow(0 1px #ffffffbf);
+  padding: 2em;
+}
+
+img { display: flex; }
+
+/* ----------------------------------------------------------------- layout */
+
+/* The page: a centred grid. The left pane on the left, the page in the
+   middle, and (on pages that have one) the table of contents on the right.
+   Both side columns stay put while the page scrolls. */
+body {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-areas: "left main";
+  gap: 2em 3em;
+  align-items: start;
+  max-width: 80rem;
+  margin-inline: auto;
+}
+
+body:has(> .toc) {
+  grid-template-columns: 260px minmax(0, 1fr) 15rem;
+  grid-template-areas: "left main toc";
+}
+
+.pane-left { grid-area: left; }
+.pane-right { grid-area: main; }
+body > .toc { grid-area: toc; }
+
+.pane-left {
+  position: sticky;
+  /* exactly where it starts (the body's padding plus its default 8px margin),
+     so it doesn't shift when the page scrolls */
+  top: calc(2rem + 8px);
+  /* the full height of the window (minus the body's padding and default
+     8px margin), so the social row can sit at the bottom */
+  height: calc(100svh - 4rem - 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25em;
+}
+
+.pane-left section > :first-child { margin-top: 0; }
+.pane-left section > :last-child { margin-bottom: 0; }
+
+/* Sitemap: every page, posts nested under Blog. The page you're on is bold
+   and not underlined. Nested lists hang off a thin groove, pressed into the
+   page like the letterpress text. */
+.sitemap ul { list-style: none; margin: 0; padding: 0; }
+.sitemap li { margin: .2em 0; }
+
+.sitemap a { color: inherit; text-decoration-color: rgba(34, 34, 34, .35); }
+.sitemap a:hover { text-decoration-color: currentColor; }
+.sitemap a.current, .post-index a.current { font-weight: bold; text-decoration: none; }
+
+/* Collections (Blog, Articles): each is its own container, built like the
+   code block: a dark framed box with a raised header bar (linking to the
+   collection's index page) above a recessed, scrollable list of entries. On
+   desktop the containers share the space above the social row and scroll
+   when they run out; on phones each list is capped and scrolls. */
+.post-index {
+  flex: 0 1 auto;
+  /* always room for the header and about one entry, however short the window */
+  min-height: 7em;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #ddd;
+  border: 1px solid #111;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+
+.post-index-bar {
+  --label-pad: .6em;
+  flex: none;
+  padding-inline: .75em;
+  font-weight: bold;
+  color: #eee;
+  background: linear-gradient(#444, #2c2c2c);
+  border-bottom: 1px solid #111;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, .6);
+}
+
+.post-index-bar a { color: inherit; text-decoration: none; }
+.post-index-bar a:hover { text-decoration: underline; }
+
+.post-index-list {
+  /* fill the container, even when it holds less than its minimum height */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 .75em;
+  background: linear-gradient(#1f1f1f, #262626);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, .6);
+  scrollbar-width: thin;
+  scrollbar-color: #555 transparent;
+}
+
+.post-index ul { list-style: none; margin: 0; padding: 0; }
+
+/* entries separated by grooves */
+.post-index li { padding: .55em 0; line-height: 1.3; }
+.post-index li + li {
+  border-top: 1px solid rgba(0, 0, 0, .7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+
+.post-index a { color: inherit; text-decoration-color: rgba(221, 221, 221, .35); }
+.post-index a:hover { text-decoration-color: currentColor; }
+.post-index .note { font-size: .85em; opacity: .6; }
+.post-index a.current { color: #fff; }
+.post-index-list > p { margin: .55em 0; }
+
+/* posts and pages read at 18px, with the measure set in that size */
+.pane-right { max-width: 42em; font-size: 1.125rem; line-height: 1.55; }
+.pane-right :is(h1, h2, h3, h4, h5, h6) { line-height: 1.2; }
+
+/* explicit sizes, so every page's headings match: browsers otherwise shrink
+   an h1 inside <article> or <section> */
+.pane-right h1 { font-size: 2em; margin: .67em 0; }
+.pane-right h2 { font-size: 1.5em; }
+.pane-right h3 { font-size: 1.25em; }
+.pane-right h4 { font-size: 1.1em; }
+.pane-right h5 { font-size: 1em; }
+.pane-right h6 { font-size: .9em; }
+
+/* code a touch smaller than the text around it (naming a real font first
+   also stops browsers shrinking bare `monospace` by their own rules) */
+.pane-right :is(code, pre) { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .88em; }
+.pane-right pre code { font-size: 1em; }
+/* no space above the first heading, whether or not it's wrapped in an
+   <article> or <section>, so every page's title starts at the same height */
+.pane-right > :first-child,
+.pane-right > :first-child > :first-child { margin-top: 0; }
+
+/* long code lines scroll inside their block, not the whole page */
+.pane-right pre { overflow-x: auto; }
+
+/* Code block: its own dark container, like the social row. A raised bar
+   names the language, and the code sits below it in a recessed panel. Long lines
+   scroll inside the panel. Blocks without a language have no bar. */
+.codeblock {
+  margin: 1em 0;
+  overflow: hidden;
+  border: 1px solid #111;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+
+.codeblock-bar {
+  --label-pad: .55em;
+  padding-inline: .8em;
+  font-size: .75em;
+  font-weight: bold;
+  letter-spacing: .02em;
+  color: rgba(238, 238, 238, .8);
+  background: linear-gradient(#444, #2c2c2c);
+  border-bottom: 1px solid #111;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, .6);
+}
+
+.codeblock pre {
+  margin: 0;
+  padding: .85em 1em;
+  line-height: 1.5;
+  color: #e6e6e6;
+  background: linear-gradient(#1a1a1a, #222 2.5em);
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, .6);
+  scrollbar-width: thin;
+  scrollbar-color: #555 transparent;
+}
+
+/* Table of contents: always visible, a plain list of the page's sections
+   with subsections indented, in the page's right-hand column. The links are
+   faded like notes and darken on hover. On narrower screens it moves above
+   the page. */
+.toc {
+  /* rem, not em: this box has a smaller font, and the offset must match the
+     body's 2em padding exactly or it shifts when the page scrolls */
+  position: sticky;
+  top: calc(2rem + 8px);
+  max-height: calc(100svh - 4rem - 16px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  font-size: .9em;
+}
+
+.toc ul { list-style: none; margin: 0; padding: 0; }
+.toc li { margin: 0 0 .45em; line-height: 1.3; }
+.toc li.d3 { padding-left: 1em; }
+.toc li.d4 { padding-left: 2em; }
+
+.toc a { color: inherit; opacity: .75; text-decoration: none; }
+.toc a:hover { opacity: 1; text-decoration: underline; }
+
+@media (max-width: 1100px) {
+  body:has(> .toc) {
+    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-areas: "left toc" "left main";
+  }
+  .pane-left { grid-row: 1 / span 2; }
+  .toc { position: static; max-height: none; }
+}
+
+/* clicking an entry scrolls to its section; a little room above the heading */
+html { scroll-behavior: smooth; }
+.pane-right :is(h2, h3, h4)[id] { scroll-margin-top: 1em; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+/* Social links: their own dark container at the bottom of the left pane,
+   holding a row of raised dark tiles with light metal icons. The tiles light
+   up a little on hover and sink in when pressed, like the light button. */
+.social {
+  /* as wide as its icons, at the bottom of the pane */
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 10px;
+  background: linear-gradient(#262626, #1a1a1a);
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    inset 0 0 0 1px rgba(0, 0, 0, .5),
+    0 1px 3px rgba(0, 0, 0, .35);
+}
+
+.social ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tile {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(#444, #2c2c2c);
+  border: 1px solid #111;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .14),
+    0 1px 2px rgba(0, 0, 0, .5);
+}
+
+/* the icon is pressed into the tile: a dark edge above it */
+.tile img {
+  display: block;
+  width: 16px;
+  height: 16px;
+  filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, .7));
+}
+
+.tile:hover { background: linear-gradient(#4e4e4e, #343434); }
+
+.tile:active {
+  background: linear-gradient(#262626, #303030);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .6);
+}
+
+.tile:focus-visible { outline: 2px solid #eee; outline-offset: 2px; }
+
+/* Home: news, newest first, each item's date in a column beside its text. */
+.news ul { list-style: none; margin: 0; padding: 0; }
+.news li {
+  display: grid;
+  grid-template-columns: 11em minmax(0, 1fr);
+  gap: 1em;
+  padding: .6em 0;
+}
+.news li + li { border-top: 1px solid rgba(0, 0, 0, .12); box-shadow: inset 0 1px 0 #ffffffbf; }
+.news li > .note { padding-top: .1em; font-size: .9em; }
+.news li > div > :first-child { margin-top: 0; }
+.news li > div > :last-child { margin-bottom: 0; }
+
+/* Home: Projects and Recently played, in the same dark containers as the
+   blog list, side by side when there's room */
+.panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17em, 1fr));
+  gap: 1.5em;
+  align-items: start;
+  margin-top: 2em;
+}
+
+.panel { font-size: .9em; }
+
+/* each track: its album cover beside the title, artist and time */
+.listening li {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: .75em;
+  align-items: center;
+}
+
+/* the cover sits on the dark panel like a small print: rounded, a faint
+   light ring and top highlight, and a shadow. Without one it's an empty
+   dark square, so the rows still line up. */
+.cover {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: linear-gradient(#3a3a3a, #2a2a2a);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .7);
+}
+
+.cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, .12),
+    inset 0 1px 0 rgba(255, 255, 255, .2);
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .news li { grid-template-columns: minmax(0, 1fr); gap: .2em; }
+}
+
+/* phones: the left pane stacks above the page */
+@media (max-width: 640px) {
+  body, body:has(> .toc) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "left" "toc" "main";
+  }
+  .pane-left { grid-row: auto; }
+  .pane-left { position: static; height: auto; }
+  .post-index-list { max-height: 14em; }
+}
+
+.note { opacity: .75; }
+
+/* ------------------------------------------------------------ components */
+
+/* Centred labels. Components whose text sits inside a visible edge list
+   themselves here. `text-box` trims each line box to the capitals and the
+   baseline, so the label is centred exactly, whatever the font's metrics.
+   Browsers without it fall back to `line-height: 1`, which is centred for
+   Arial and close for Helvetica. Components set their padding with
+   --label-pad and get the same height either way. */
+.button, .speech, .codeblock-bar, .post-index-bar {
+  /* each component can set its own padding with --label-pad */
+  --pad-y: var(--label-pad, .6em);
+  line-height: 1;
+  padding-top: var(--pad-y);
+  padding-bottom: var(--pad-y);
+}
+
+@supports (text-box: trim-both cap alphabetic) {
+  .button, .speech, .codeblock-bar, .post-index-bar {
+    text-box: trim-both cap alphabetic;
+    /* add back the height the trim removed */
+    --pad-y: calc(var(--label-pad, .6em) + (1em - 1cap) / 2);
+  }
+}
+
+/* Button: a raised, softly lit key. Put it on a link. It brightens on
+   hover and sinks in when pressed. */
+.button {
+  display: inline-block;
+  padding-inline: 1em;
+  color: #222;
+  font-weight: bold;
+  text-decoration: none;
+  text-shadow: 0 1px 0 #ffffffbf;
+  background: linear-gradient(#eee, #ccc);
+  border: 1px solid #aaa;
+  border-bottom-color: #999;
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 #ffffffbf, 0 1px 2px rgba(0, 0, 0, .2);
+}
+
+.button:hover { background: linear-gradient(#fff, #ddd); }
+
+.button:active {
+  background: linear-gradient(#c4c4c4, #d8d8d8);
+  border-color: #999;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .25);
+}
+
+.button:focus-visible { outline: 2px solid #222; outline-offset: 2px; }
+
+/* Bordered image: a two-tone edge, 1px dark at the very edge with 1px light
+   just inside it, drawn over the image's outer pixels. Bright images show the
+   dark line and dark images the light one. Both lines are inset shadows on one
+   overlay, sharing one radius, so they stay together at any zoom. A soft
+   shadow lifts the image slightly, like the button. The image scales down to
+   fit and never stretches. */
+.bordered {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
+}
+
+.bordered img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: inherit;
+}
+
+.bordered::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, .3),
+    inset 0 0 0 2px rgba(255, 255, 255, .3);
+  pointer-events: none;
+}
+
+/* Pixel Domo, the mark in the top-left. His frames (open, shut, wide,
+   sleep) are stacked, and only the right one shows:
+   - arriving: he says his line (the bubble), his mouth flapping, then stops
+   - after 30 seconds: he falls asleep, with a slowly blinking "zzz"
+   - hover: he wakes and opens wide; moving away restarts the 30 seconds
+   - press: he chomps shut on the cursor until it's released
+   Hard cuts between frames, no easing. */
+.domo {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 42px;
+  vertical-align: top;
+  --sleep-after: 30s;
+}
+
+.domo img { position: absolute; inset: 0; display: block; }
+
+.domo .shut, .domo .wide, .domo .sleep { opacity: 0; }
+
+/* talking: the mouth flaps while the bubble shows */
+.domo .shut { animation: domo-flap .4s step-end .5s 9; }
+
+@keyframes domo-flap {
+  0%  { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* falling asleep: swap the open frame for the sleeping one, for good */
+.domo .open  { animation: domo-hide 0s var(--sleep-after) forwards; }
+.domo .sleep { animation: domo-show 0s var(--sleep-after) forwards; }
+
+@keyframes domo-hide { to { opacity: 0; } }
+@keyframes domo-show { to { opacity: 1; } }
+
+.zzz {
+  position: absolute;
+  left: calc(100% + 4px);
+  top: -6px;
+  font: bold 11px/1 var(--mono, monospace);
+  letter-spacing: 1px;
+  opacity: 0;
+  pointer-events: none;
+  animation: domo-zzz 3s step-end var(--sleep-after) infinite;
+}
+
+@keyframes domo-zzz {
+  0%  { opacity: .75; }
+  50% { opacity: .35; }
+}
+
+/* hover wakes him: open wide, no sleep, no zzz */
+.domo:hover .open,
+.domo:hover .shut,
+.domo:hover .sleep { animation: none; opacity: 0; }
+.domo:hover .wide { opacity: 1; }
+.domo:hover .zzz { animation: none; opacity: 0; }
+
+.domo:active .wide { opacity: 0; }
+.domo:active .shut { opacity: 1; }
+
+/* Speech bubble: his one line, shown once when the page loads. A light,
+   raised bubble like the button, with a little tail pointing at him. It
+   doesn't catch the mouse, so hovering still means hovering him. */
+.speech {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 6px;
+  width: max-content;
+  max-width: 190px;
+  padding-inline: .75em;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(#fff, #e9e9e9);
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0, 0, 0, .2);
+  animation: domo-say 3.6s step-end .5s forwards;
+}
+
+@keyframes domo-say {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* the tail: a small square, turned and half tucked behind the bubble */
+.speech::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  background: #f6f6f6;
+  border-left: 1px solid #aaa;
+  border-bottom: 1px solid #aaa;
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* no flapping mouth or blinking zzz; he still talks and still sleeps */
+  .domo .shut { animation: none; }
+  .zzz { animation: domo-show 0s var(--sleep-after) forwards; }
+}

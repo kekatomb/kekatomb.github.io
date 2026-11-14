@@ -1,0 +1,10 @@
+name = "lindgre"
+version = "0.1.0"
+defaultTargets = ["site"]
+
+[[lean_lib]]
+name = "Site"
+
+[[lean_exe]]
+name = "site"
+root = "Main"

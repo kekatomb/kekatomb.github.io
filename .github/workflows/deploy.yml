@@ -1,0 +1,71 @@
+name: Build and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  # rebuild hourly so the Last.fm and GitHub parts of the home page stay fresh
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/cache@v4
+        with:
+          path: .lake
+          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lakefile.toml') }}-${{ hashFiles('**/*.lean') }}
+          restore-keys: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lakefile.toml') }}-
+
+      - name: Build generator (runs tests)
+        run: lake build
+
+      - name: Generate site
+        # The Last.fm API key comes from the repository secret LASTFM_API_KEY.
+        # Without it, the home page is built without the Last.fm section.
+        # GITHUB_TOKEN is provided by Actions; it lets the build read pinned repos.
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: lake exe site
+
+      - name: Check for JavaScript
+        # All text is HTML-escaped, so every literal <...> is a real tag.
+        # Look inside tags only, so posts can still *mention* these things.
+        run: |
+          if grep -rhoiE '<[^>]*>' _site | grep -iE '^<script|javascript:|[[:space:]]on[a-z]+=|^<(iframe|object|embed)'; then
+            echo "::error::JavaScript found in generated site"
+            exit 1
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
