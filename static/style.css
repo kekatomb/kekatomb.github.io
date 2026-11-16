@@ -6,8 +6,7 @@
 /* ----------------------------------------------------------------- tokens */
 
 :root {
-  --ground-top: #eee;
-  --ground-bottom: #ddd;
+  --ground: #e6e6e6;            /* the page, flat (see html below) */
   --ink: #222;
   --ink-soft: #5c5c5c;          /* notes and dates; still readable on #ddd */
   --edge: #a3a3a3;              /* the outer edge of light containers */
@@ -26,8 +25,9 @@
 html {
   color-scheme: light;
   color: var(--ink);
-  background: linear-gradient(var(--ground-top), var(--ground-bottom));
-  min-height: 100svh;
+  /* a flat colour, not a gradient: it's also what browsers show past the
+     page's ends when you scroll too far, which can only be one colour */
+  background: var(--ground);
   font-family: Helvetica, Arial, sans-serif;
 }
 
