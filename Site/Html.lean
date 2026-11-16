@@ -12,6 +12,12 @@ This module is where the "no JavaScript" guarantee lives:
   `style` can never appear.
 * `href` and `src` values pass through `sanitizeUrl`, which only allows
   relative URLs and the `http`, `https` and `mailto` schemes.
+
+There is one exception, and it is explicit: the `script` node, which renders
+only for a source listed in `allowedScripts` (giscus, for comments on posts).
+A script from anywhere else renders as nothing. Markdown can never produce
+one; only the templates do. The deploy workflow checks the built site for
+any other script.
 -/
 
 namespace Site
@@ -19,6 +25,9 @@ namespace Site
 inductive Html where
   | elem (tag : String) (attrs : List (String × String)) (children : List Html)
   | text (s : String)
+  /-- An external script, from `allowedScripts` only, with its settings as
+  `data-*` attributes. -/
+  | script (src : String) (data : List (String × String))
 
 instance : Inhabited Html := ⟨.text ""⟩
 
@@ -35,6 +44,9 @@ def allowedAttrs : List String :=
   [ "href", "src", "alt", "title", "class", "id", "lang", "charset"
   , "name", "content", "datetime", "rel", "start", "width", "height"
   , "aria-current", "aria-label", "aria-hidden" ]
+
+/-- The only scripts the site may load: giscus, for comments on posts. -/
+def allowedScripts : List String := ["https://giscus.app/client.js"]
 
 def voidTags : List String := ["br", "hr", "img", "meta", "link"]
 
@@ -74,6 +86,12 @@ def safeAttr : String × String → Option (String × String)
 
 partial def render : Html → String
   | .text s => escape s
+  | .script src data =>
+    if !allowedScripts.contains src then "" else
+    -- only `data-` attributes, so its settings can't smuggle in handlers
+    let as := String.join <| (data.filter (·.1.startsWith "data-")).map fun (k, v) =>
+      s!" {k.toLower}=\"{escape v}\""
+    s!"<script src=\"{src}\"{as} crossorigin=\"anonymous\" async></script>\n"
   | .elem tag attrs children =>
     let inner := String.join (children.map render)
     let tag := tag.toLower

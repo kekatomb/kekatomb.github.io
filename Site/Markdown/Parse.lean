@@ -9,8 +9,11 @@ blockquotes (`>`), flat unordered (`-`, `*`, `+`) and ordered (`1.`, `1)`)
 lists, and thematic breaks (`---`, `***`, `___`).
 
 Inlines: `*em*` / `_em_`, `**strong**` / `__strong__`, `` `code` ``,
-`[text](url)`, `![alt](src)`, backslash escapes, and hard line breaks (two
-trailing spaces or a trailing backslash).
+`[text](url)`, `![alt](src)`, margin notes (`^[note]`, as in Pandoc),
+footnote references (`[^label]`), backslash escapes, and hard line breaks
+(two trailing spaces or a trailing backslash).
+
+Footnotes: `[^label]: text` on its own line, continued on indented lines.
 
 Not supported: raw HTML (it is escaped), setext headings, indented code
 blocks, nested lists, reference links, tables.
@@ -140,6 +143,19 @@ partial def inlines (cs : List Char) (buf : List Char := []) (out : List Inline 
     | some (label, url, after) =>
       inlines after [] (.image (String.ofList (unescape label)) url :: flushBuf buf out)
     | none => inlines ('[' :: rest) ('!' :: buf) out
+  -- a margin note: `^[text]`, its text parsed like any other
+  | '^' :: '[' :: rest =>
+    match bracketClose rest with
+    | some (inner, after) => inlines after [] (.note (inlines inner) :: flushBuf buf out)
+    | none => inlines ('[' :: rest) ('^' :: buf) out
+  -- a footnote reference: `[^label]`, the label without spaces
+  | '[' :: '^' :: rest =>
+    let label := rest.takeWhile (fun c => c != ']' && !isSpace c)
+    match rest.drop label.length with
+    | ']' :: after =>
+      if label.isEmpty then inlines rest ('^' :: '[' :: buf) out
+      else inlines after [] (.footRef (String.ofList label) :: flushBuf buf out)
+    | _ => inlines rest ('^' :: '[' :: buf) out
   | '[' :: rest =>
     match linkParts rest with
     | some (label, url, after) => inlines after [] (.link (inlines label) url :: flushBuf buf out)
@@ -217,8 +233,18 @@ def olItem? (l : List Char) : Option (Nat × List Char) :=
     else none
   | _ => none
 
+/-- A footnote's first line, `[^label]: text`: its label and text. -/
+def footDef? (l : List Char) : Option (String × List Char) :=
+  match trimLeft l with
+  | '[' :: '^' :: rest =>
+    let label := rest.takeWhile (fun c => c != ']' && !isSpace c)
+    match rest.drop label.length with
+    | ']' :: ':' :: text => if label.isEmpty then none else some (String.ofList label, trimLeft text)
+    | _ => none
+  | _ => none
+
 def startsBlock (l : List Char) : Bool :=
-  isFence l || (heading? l).isSome || isHr l || isQuote l || (ulItem? l).isSome || (olItem? l).isSome
+  (footDef? l).isSome || isFence l || (heading? l).isSome || isHr l || isQuote l || (ulItem? l).isSome || (olItem? l).isSome
 
 /-- Collect consecutive list items. An item continues over following non-blank
 lines that don't start a new block. Blank lines between items are allowed. -/
@@ -247,6 +273,10 @@ partial def blocks : List (List Char) → List Block
       let (body, rest) := ls.span (fun x => !isFence x)
       let lang := if lang.isEmpty then none else some (String.ofList lang)
       .codeBlock lang (String.ofList (joinLines body)) :: blocks (rest.drop 1)
+    else if let some (label, first) := footDef? l then
+      -- continued on the indented lines that follow
+      let (cont, rest) := ls.span (fun x => !isBlank x && x.head?.any isSpace)
+      .footnote label (inlines (trimRight (joinLines (first :: cont.map trimLeft)))) :: blocks rest
     else if let some (n, t) := heading? l then
       .heading n (inlines t) :: blocks ls
     else if isHr l then .hr :: blocks ls

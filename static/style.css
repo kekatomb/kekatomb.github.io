@@ -1,18 +1,56 @@
-/* Styling copied from aspen.llia.cc. */
+/* Light skeuomorphism in greyscale, after the forums of the 2000s: a brushed
+   grey page, light recessed wells under glossy silver title bars, and charcoal only
+   for things that behave like devices (code, the social tray, the player).
+   First styled after aspen.llia.cc. */
 
+/* ----------------------------------------------------------------- tokens */
+
+:root {
+  --ground-top: #eee;
+  --ground-bottom: #ddd;
+  --ink: #222;
+  --ink-soft: #5c5c5c;          /* notes and dates; still readable on #ddd */
+  --edge: #a3a3a3;              /* the outer edge of light containers */
+  --well: #f5f5f5;              /* recessed rows, alternating with... */
+  --well-alt: #ececec;
+  --bar-top: #fafafa;           /* glossy silver title bars */
+  --bar-bottom: #d2d2d2;
+  --bar-edge: #a3a3a3;
+  --press: 0 1px 0 #ffffffbf;   /* letterpress: a light edge under text */
+  --chrome: Verdana, Tahoma, "DejaVu Sans", sans-serif;
+  --mono: ui-monospace, Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+
+/* the site is light only, and says so: scrollbars and form controls stay
+   light for visitors in dark mode */
 html {
-  color: #222;
-  background: linear-gradient(#eee, #ddd);
+  color-scheme: light;
+  color: var(--ink);
+  background: linear-gradient(var(--ground-top), var(--ground-bottom));
   min-height: 100svh;
   font-family: Helvetica, Arial, sans-serif;
 }
 
-body {
-  filter: drop-shadow(0 1px #ffffffbf);
-  padding: 2em;
-}
+body { padding: 2em; }
 
-img { display: flex; }
+/* the letterpress edge goes on text on the light page only, never under
+   dark containers or images */
+.pane-left, .pane-right, .toc { text-shadow: var(--press); }
+
+img { max-width: 100%; height: auto; }
+
+/* links are ink, told apart by their underline, which darkens on hover */
+a {
+  color: inherit;
+  text-underline-offset: .15em;
+  text-decoration-color: rgba(34, 34, 34, .35);
+}
+a:hover { text-decoration-color: currentColor; }
+
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* on dark grounds the ring is pale */
+:is(.dark, .codeblock, .social) :focus-visible { outline-color: #eee; }
 
 /* ----------------------------------------------------------------- layout */
 
@@ -21,7 +59,7 @@ img { display: flex; }
    Both side columns stay put while the page scrolls. */
 body {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 250px minmax(0, 1fr);
   grid-template-areas: "left main";
   gap: 2em 3em;
   align-items: start;
@@ -30,7 +68,7 @@ body {
 }
 
 body:has(> .toc) {
-  grid-template-columns: 260px minmax(0, 1fr) 15rem;
+  grid-template-columns: 250px minmax(0, 1fr) 14rem;
   grid-template-areas: "left main toc";
 }
 
@@ -38,6 +76,7 @@ body:has(> .toc) {
 .pane-right { grid-area: main; }
 body > .toc { grid-area: toc; }
 
+/* the left pane is interface, not reading: small, tight chrome type */
 .pane-left {
   position: sticky;
   /* exactly where it starts (the body's padding plus its default 8px margin),
@@ -49,123 +88,205 @@ body > .toc { grid-area: toc; }
   display: flex;
   flex-direction: column;
   gap: 1.25em;
+  font: 13px/1.45 var(--chrome);
+}
+
+.pane-head { flex: none; display: flex; flex-direction: column; gap: 1em; }
+
+/* the collections share the space above the social row */
+.pane-lists {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25em;
 }
 
 .pane-left section > :first-child { margin-top: 0; }
 .pane-left section > :last-child { margin-bottom: 0; }
 
-/* Sitemap: every page, posts nested under Blog. The page you're on is bold
-   and not underlined. Nested lists hang off a thin groove, pressed into the
-   page like the letterpress text. */
+/* Sitemap: every top-level page. The page you're on is bold, in ink, and
+   not underlined. */
 .sitemap ul { list-style: none; margin: 0; padding: 0; }
 .sitemap li { margin: .2em 0; }
+.sitemap a.current, .post-index a.current {
+  color: var(--ink);
+  font-weight: bold;
+  text-decoration: none;
+}
 
-.sitemap a { color: inherit; text-decoration-color: rgba(34, 34, 34, .35); }
-.sitemap a:hover { text-decoration-color: currentColor; }
-.sitemap a.current, .post-index a.current { font-weight: bold; text-decoration: none; }
+/* ------------------------------------------------------- light containers */
 
-/* Collections (Blog, Articles): each is its own container, built like the
-   code block: a dark framed box with a raised header bar (linking to the
-   collection's index page) above a recessed, scrollable list of entries. On
-   desktop the containers share the space above the social row and scroll
-   when they run out; on phones each list is capped and scrolls. */
+/* Wells: the Blog and Articles lists, Projects, the table of contents and a
+   collection's thread list. A glossy silver title bar sits above a light,
+   recessed list whose rows alternate between two tints, divided by grooves,
+   like the category tables of an old forum. */
+.post-index, .toc, .threads, .forum-post, .comments {
+  overflow: hidden;
+  background: var(--well);
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .15), 0 1px 0 #ffffff80;
+}
+
+.post-index-bar, .toc-bar, .threads-head, .forum-post-bar, .comments-bar {
+  --label-pad: .6em;
+  flex: none;
+  padding-inline: .8em;
+  font: bold 12px var(--chrome);
+  color: var(--ink);
+  background: linear-gradient(var(--bar-top), var(--bar-bottom));
+  border-bottom: 1px solid var(--bar-edge);
+  box-shadow: inset 0 1px 0 #fff;
+  text-shadow: var(--press);
+}
+
+:is(.post-index-bar, .forum-post-bar) a { color: inherit; text-decoration: none; }
+:is(.post-index-bar, .forum-post-bar) a:hover { text-decoration: underline; }
+
+/* inside the well, a faint inner shadow under the bar: the list is pressed in */
+.post-index-list, .threads > ul, .toc > ul {
+  box-shadow: inset 0 2px 3px -1px rgba(0, 0, 0, .12);
+}
+
+.post-index ul, .threads ul, .toc ul { list-style: none; margin: 0; padding: 0; }
+
+.post-index li, .threads li, .toc li { padding: .5em .8em; line-height: 1.3; }
+:is(.post-index, .threads, .toc) li:nth-child(even) { background: var(--well-alt); }
+:is(.post-index, .threads, .toc) li + li {
+  border-top: 1px solid rgba(0, 0, 0, .08);
+  box-shadow: inset 0 1px 0 #ffffffb3;
+}
+
+/* Collections in the left pane: on desktop they share the space above the
+   social row and scroll when they run out; on phones each is capped. */
 .post-index {
   flex: 0 1 auto;
   /* always room for the header and about one entry, however short the window */
   min-height: 7em;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  color: #ddd;
-  border: 1px solid #111;
-  border-radius: 3px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
 }
-
-.post-index-bar {
-  --label-pad: .6em;
-  flex: none;
-  padding-inline: .75em;
-  font-weight: bold;
-  color: #eee;
-  background: linear-gradient(#444, #2c2c2c);
-  border-bottom: 1px solid #111;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, .6);
-}
-
-.post-index-bar a { color: inherit; text-decoration: none; }
-.post-index-bar a:hover { text-decoration: underline; }
 
 .post-index-list {
   /* fill the container, even when it holds less than its minimum height */
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 .75em;
+  scrollbar-width: thin;
+  scrollbar-color: #b5b5b5 transparent;
+}
+
+.post-index .note { font-size: .92em; }
+.post-index-list > p { margin: 0; padding: .55em .8em; }
+
+/* ------------------------------------------------------- dark containers */
+
+/* Recently played: a little player, in charcoal like the code block. */
+.post-index.dark {
+  color: #ddd;
+  background: #222;
+  border-color: #111;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  text-shadow: none;
+}
+
+.post-index.dark .post-index-bar {
+  color: #eee;
+  background: linear-gradient(#444, #2c2c2c);
+  border-bottom-color: #111;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
+  text-shadow: 0 -1px 0 rgba(0, 0, 0, .6);
+}
+
+.post-index.dark .post-index-list {
   background: linear-gradient(#1f1f1f, #262626);
   box-shadow: inset 0 1px 4px rgba(0, 0, 0, .6);
-  scrollbar-width: thin;
   scrollbar-color: #555 transparent;
 }
 
-.post-index ul { list-style: none; margin: 0; padding: 0; }
-
-/* entries separated by grooves */
-.post-index li { padding: .55em 0; line-height: 1.3; }
-.post-index li + li {
-  border-top: 1px solid rgba(0, 0, 0, .7);
+.post-index.dark li:nth-child(even) { background: rgba(255, 255, 255, .03); }
+.post-index.dark li + li {
+  border-top-color: rgba(0, 0, 0, .7);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
 }
+.post-index.dark a { color: inherit; text-decoration-color: rgba(221, 221, 221, .35); }
+.post-index.dark a:hover { text-decoration-color: currentColor; }
+.post-index.dark .note { color: #999; }
 
-.post-index a { color: inherit; text-decoration-color: rgba(221, 221, 221, .35); }
-.post-index a:hover { text-decoration-color: currentColor; }
-.post-index .note { font-size: .85em; opacity: .6; }
-.post-index a.current { color: #fff; }
-.post-index-list > p { margin: .55em 0; }
+/* ------------------------------------------------------------- the page */
 
-/* posts and pages read at 18px, with the measure set in that size */
-.pane-right { max-width: 42em; font-size: 1.125rem; line-height: 1.55; }
+/* posts and pages read at 17px, with the measure set in that size */
+.pane-right { max-width: 44rem; font-size: 1.0625rem; line-height: 1.55; }
 .pane-right :is(h1, h2, h3, h4, h5, h6) { line-height: 1.2; }
 
 /* explicit sizes, so every page's headings match: browsers otherwise shrink
    an h1 inside <article> or <section> */
-.pane-right h1 { font-size: 2em; margin: .67em 0; }
-.pane-right h2 { font-size: 1.5em; }
-.pane-right h3 { font-size: 1.25em; }
-.pane-right h4 { font-size: 1.1em; }
+.pane-right h1 { font-size: 2em; margin: .5em 0 .6em; letter-spacing: -.01em; }
+.pane-right h2 { font-size: 1.45em; }
+.pane-right h3 { font-size: 1.2em; }
+.pane-right h4 { font-size: 1.05em; }
 .pane-right h5 { font-size: 1em; }
 .pane-right h6 { font-size: .9em; }
 
 /* code a touch smaller than the text around it (naming a real font first
    also stops browsers shrinking bare `monospace` by their own rules) */
-.pane-right :is(code, pre) { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .88em; }
+.pane-right :is(code, pre) { font-family: var(--mono); font-size: .88em; }
 .pane-right pre code { font-size: 1em; }
-/* no space above the first heading, whether or not it's wrapped in an
-   <article> or <section>, so every page's title starts at the same height */
+
+/* no space above the first thing on the page, whether or not it's wrapped in
+   an <article> or <section>, so every page starts at the same height */
 .pane-right > :first-child,
 .pane-right > :first-child > :first-child { margin-top: 0; }
 
 /* long code lines scroll inside their block, not the whole page */
 .pane-right pre { overflow-x: auto; }
 
-/* Code block: its own dark container, like the social row. A raised bar
-   names the language, and the code sits below it in a recessed panel. Long lines
-   scroll inside the panel. Blocks without a language have no bar. */
+.note { color: var(--ink-soft); }
+
+/* Breadcrumbs: where this page sits, on a light raised strip, in chrome type.
+   The last step is the page itself. */
+.breadcrumbs {
+  margin-bottom: 1.5rem;
+  padding: .5em .85em;
+  font: 12px/1.4 var(--chrome);
+  background: linear-gradient(#f9f9f9, #e6e6e6);
+  border: 1px solid var(--edge);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0, 0, 0, .12);
+}
+
+.breadcrumbs ol { display: flex; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; }
+.breadcrumbs li + li::before { content: "›"; margin: 0 .55em; color: var(--ink-soft); }
+.breadcrumbs span { font-weight: bold; }
+
+/* A collection's index: a thread list. A bar names the columns; each row
+   has the title (and summary) beside the date. */
+.threads li, .threads-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 11em;
+  gap: 1em;
+}
+.threads li { padding: .7em .9em; }
+.threads li > .note { font: 12px/1.9 var(--chrome); }
+.threads > p { margin: 0; padding: .7em .9em; }
+
+/* Code block: its own dark container. A raised bar names the language, and
+   the code sits below it in a recessed panel. Long lines scroll inside the
+   panel. Blocks without a language have no bar. */
 .codeblock {
   margin: 1em 0;
   overflow: hidden;
   border: 1px solid #111;
   border-radius: 3px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  text-shadow: none;
 }
 
 .codeblock-bar {
   --label-pad: .55em;
   padding-inline: .8em;
-  font-size: .75em;
-  font-weight: bold;
-  letter-spacing: .02em;
+  font: bold 11px var(--chrome);
   color: rgba(238, 238, 238, .8);
   background: linear-gradient(#444, #2c2c2c);
   border-bottom: 1px solid #111;
@@ -184,32 +305,237 @@ body > .toc { grid-area: toc; }
   scrollbar-color: #555 transparent;
 }
 
-/* Table of contents: always visible, a plain list of the page's sections
-   with subsections indented, in the page's right-hand column. The links are
-   faded like notes and darken on hover. On narrower screens it moves above
-   the page. */
+/* A post, as the first post of a forum thread: a bar with the date and a
+   permalink, then the body, with its footnotes at the end. */
+.forum-post { container-type: inline-size; }
+.forum-post-bar { display: flex; justify-content: space-between; gap: 1em; }
+
+/* flow-root: a long last note stays inside the box */
+/* flow-root: the body grows to hold its notes (see `.note-room`) */
+.forum-post-body { display: flow-root; padding: 1rem 1.25rem 1.25rem; background: #fafafa; }
+.forum-post-body > :first-child { margin-top: 0; }
+
+/* Margin notes (`^[…]` in Markdown): a small number in the text and the
+   note beside it. The numbers are CSS counters, counted down the page. The
+   post box is a container, which keeps counters from crossing into it, so
+   they start inside: on the post's body (or the page, without a post box).
+   By default (on phones, and on pages without a notes column) a note is an
+   indented aside just below the line it belongs to. */
+.pane-right, .forum-post-body { counter-reset: note; }
+.note-ref { counter-increment: note; }
+.note-ref::after {
+  content: counter(note);
+  margin-left: 1px;
+  font: bold 10px/0 var(--chrome);
+  vertical-align: super;
+  color: var(--ink-soft);
+}
+
+.sidenote {
+  display: block;
+  margin: .4em 0 .6em 1rem;
+  padding: .15em 0 .15em .75em;
+  font: 12px/1.45 var(--chrome);
+  color: var(--ink-soft);
+  border-left: 2px solid rgba(0, 0, 0, .15);
+}
+.sidenote-text::before { content: counter(note) ". "; font-weight: bold; }
+
+.note-cover, .note-room { display: none; }
+
+/* When the post is wide enough, it gets a notes column on the right, and
+   each note floats into it beside the line it belongs to.
+
+   When notes come close together, an earlier note keeps its first line,
+   its second line fades out, and the next note starts there. How:
+
+   - Each note's float is two lines tall: a faded line and its first line.
+     The next note's float starts below it, and the text is drawn a line
+     higher than its float, so the next note's faded line lies over this
+     one's second line.
+   - Every note's text carries the column's grey as a background, clear
+     over its faded line, and an empty cover hangs from its first line down
+     the column. Notes paint in order, so each hides whatever of the
+     earlier ones runs on below its top.
+   - Beside each note is an invisible copy of it, as tall as the whole note,
+     which takes no width. It pushes nothing aside, but the post grows to
+     hold it, so there's always room to unfold a note inside the post.
+   - Hovering a note (or its number in the text) unfolds it: its text comes
+     in front of the notes after it, ending on a groove. */
+@container (min-width: 34rem) {
+  .forum-post-body {
+    --rail: 10.5rem;
+    --gutter: 1.5rem;
+    padding-right: calc(var(--rail) + var(--gutter));
+    /* the text, a groove (a dark line with a light one beside it), then
+       the column */
+    background: linear-gradient(to left,
+      var(--well-alt) var(--rail),
+      #ffffffb3 var(--rail) calc(var(--rail) + 1px),
+      rgba(0, 0, 0, .1) calc(var(--rail) + 1px) calc(var(--rail) + 2px),
+      #fafafa calc(var(--rail) + 2px));
+  }
+
+  /* quotes end where the text does, so notes inside them reach the column
+     (lists only indent on the left) */
+  .forum-post-body blockquote { margin-right: 0; }
+
+  .forum-post-body .sidenote {
+    float: right;
+    clear: right;
+    /* the faded line and the first line: all the room a note keeps */
+    height: 2lh;
+    /* the column, less .75rem each side. Its margin box is narrower than
+       nothing, so it never pushes the text aside. */
+    width: calc(var(--rail) - 1.5rem);
+    margin: 0 calc(.75rem - var(--rail) - var(--gutter)) 0 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .forum-post-body .note-cover {
+    position: relative;
+    display: block;
+    height: 0;
+  }
+
+  .forum-post-body .note-cover::before {
+    content: "";
+    position: absolute;
+    top: .2em;
+    left: 0;
+    right: 0;
+    height: 200em;
+    background: var(--well-alt);
+  }
+
+  .forum-post-body .sidenote-text {
+    /* where it falls in the float, drawn a line higher: the faded line */
+    position: relative;
+    display: block;
+    width: calc(var(--rail) - 1.5rem);
+    margin-top: calc(.2em - 1lh);
+    padding: 1lh 0 .2em;
+    background: linear-gradient(transparent, var(--well-alt) 1lh);
+  }
+
+  /* the room: a left float with no width (its margin cancels it), so it
+     pushes nothing, as tall as the note's text below its first line */
+  .forum-post-body .note-room {
+    display: block;
+    float: left;
+    width: calc(var(--rail) - 1.5rem);
+    margin-right: calc(1.5rem - var(--rail));
+    padding: .2em 0 .5em;
+    font: 12px/1.45 var(--chrome);
+    visibility: hidden;
+  }
+  .forum-post-body .note-room::before { content: "00. "; font-weight: bold; }
+
+  /* unfolded: in front of the notes after it, ending on a groove (a dark
+     line over a light one) so it doesn't run into the next note's text */
+  .forum-post-body .note-anchor:is(:hover, :focus-within) .sidenote-text {
+    z-index: 1;
+    padding-bottom: .5em;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .12), 0 2px 0 #ffffffb3;
+  }
+}
+
+/* Images in margin notes: as wide as the note at most, on their own line,
+   with the same two-tone edge as bordered images (a dark line outside a
+   light one) and a slight lift. The note's invisible copy has the images
+   too, at the same size, so their room is kept. */
+:is(.sidenote, .note-room) img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: .4em 0 .3em;
+  border-radius: 2px;
+}
+.sidenote img {
+  outline: 1px solid rgba(0, 0, 0, .25);
+  outline-offset: -1px;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .3), 0 1px 2px rgba(0, 0, 0, .2);
+}
+
+/* pointing at either a note or its number in the text darkens the note and
+   highlights the number, so you can see which goes with which */
+.note-ref::after { padding: 0 2px; border-radius: 2px; }
+.note-anchor:is(:hover, :focus-within) .note-ref::after {
+  color: var(--ink);
+  background: rgba(0, 0, 0, .12);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .12);
+}
+.note-anchor:is(:hover, :focus-within) .sidenote { color: var(--ink); }
+
+/* Comments, by giscus: under the post, a well like it, headed by a bar. The
+   comments themselves are drawn by giscus in a frame, in the site's look
+   (static/giscus.css). Until it loads (or without JavaScript), the well is
+   empty but for its padding. */
+.comments { margin-top: 1.5rem; }
+/* border-box: giscus sets its container to `width: 100%` */
+.giscus {
+  box-sizing: border-box;
+  min-height: 3rem;
+  padding: .75rem 1.25rem 1rem;
+  background: #fafafa;
+}
+
+/* Footnotes (`[^label]` in Markdown). The reference is a small bracketed
+   number, raised, so it reads differently from a margin note's bare one. */
+.footnote-ref {
+  margin-left: 1px;
+  font: 11px/0 var(--chrome);
+  vertical-align: super;
+  text-decoration: none;
+}
+.footnote-ref:hover { text-decoration: underline; }
+
+/* the list at the end of the page, under a groove, in chrome type */
+.footnotes {
+  margin-top: 2em;
+  padding-top: .9em;
+  font: 13px/1.5 var(--chrome);
+  border-top: 1px solid rgba(0, 0, 0, .1);
+  box-shadow: inset 0 1px 0 #fff;
+}
+.footnotes ol { margin: 0; padding-left: 2em; }
+.footnotes li { margin: .3em 0; padding: .15em .4em; border-radius: 2px; }
+.footnotes li::marker { color: var(--ink-soft); }
+.footnote-back { color: var(--ink-soft); text-decoration: none; }
+.footnote-back:hover { color: var(--ink); }
+
+/* where a link lands (a footnote, or the reference it links back to) is
+   pressed into the page for a moment's notice: a recessed tint */
+.footnotes li:target, .footnote-ref:target {
+  background: rgba(0, 0, 0, .07);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .12);
+}
+.footnote-ref:target { border-radius: 2px; }
+:is(.footnotes li, .footnote-ref) { scroll-margin-top: 1em; }
+
+/* Table of contents: a small well in the page's right-hand column. On
+   narrower screens it moves above the page. */
 .toc {
-  /* rem, not em: this box has a smaller font, and the offset must match the
-     body's 2em padding exactly or it shifts when the page scrolls */
+  /* rem, not em: the offset must match the body's 2em padding exactly or it
+     shifts when the page scrolls */
   position: sticky;
   top: calc(2rem + 8px);
   max-height: calc(100svh - 4rem - 16px);
   overflow-y: auto;
   scrollbar-width: thin;
-  font-size: .9em;
+  font: 12px/1.35 var(--chrome);
 }
 
-.toc ul { list-style: none; margin: 0; padding: 0; }
-.toc li { margin: 0 0 .45em; line-height: 1.3; }
-.toc li.d3 { padding-left: 1em; }
-.toc li.d4 { padding-left: 2em; }
-
-.toc a { color: inherit; opacity: .75; text-decoration: none; }
-.toc a:hover { opacity: 1; text-decoration: underline; }
+.toc li { padding: .45em .8em; }
+.toc li.d3 { padding-left: 1.8em; }
+.toc li.d4 { padding-left: 2.8em; }
+.toc a { text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
 
 @media (max-width: 1100px) {
   body:has(> .toc) {
-    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-columns: 250px minmax(0, 1fr);
     grid-template-areas: "left toc" "left main";
   }
   .pane-left { grid-row: 1 / span 2; }
@@ -277,8 +603,6 @@ html { scroll-behavior: smooth; }
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, .6);
 }
 
-.tile:focus-visible { outline: 2px solid #eee; outline-offset: 2px; }
-
 /* Home: news, newest first, each item's date in a column beside its text. */
 .news ul { list-style: none; margin: 0; padding: 0; }
 .news li {
@@ -288,12 +612,12 @@ html { scroll-behavior: smooth; }
   padding: .6em 0;
 }
 .news li + li { border-top: 1px solid rgba(0, 0, 0, .12); box-shadow: inset 0 1px 0 #ffffffbf; }
-.news li > .note { padding-top: .1em; font-size: .9em; }
+.news li > .note { padding-top: .25em; font: 12px/1.6 var(--chrome); }
 .news li > div > :first-child { margin-top: 0; }
 .news li > div > :last-child { margin-bottom: 0; }
 
-/* Home: Projects and Recently played, in the same dark containers as the
-   blog list, side by side when there's room */
+/* Home: Projects (a light well) and Recently played (the dark player), side
+   by side when there's room */
 .panels {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(17em, 1fr));
@@ -302,7 +626,7 @@ html { scroll-behavior: smooth; }
   margin-top: 2em;
 }
 
-.panel { font-size: .9em; }
+.panel { font: 13px/1.45 var(--chrome); }
 
 /* each track: its album cover beside the title, artist and time */
 .listening li {
@@ -338,33 +662,35 @@ html { scroll-behavior: smooth; }
   pointer-events: none;
 }
 
+/* Phones: one column. The left pane's head (Domo and the sitemap) goes
+   above the page, its lists (collections and social links) below it. */
 @media (max-width: 640px) {
-  .news li { grid-template-columns: minmax(0, 1fr); gap: .2em; }
-}
-
-/* phones: the left pane stacks above the page */
-@media (max-width: 640px) {
+  body { padding: 1rem; }
   body, body:has(> .toc) {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "left" "toc" "main";
+    grid-template-areas: "head" "main" "lists";
   }
-  .pane-left { grid-row: auto; }
-  .pane-left { position: static; height: auto; }
+  body:has(> .toc) { grid-template-areas: "head" "toc" "main" "lists"; }
+  .pane-left { display: contents; }
+  .pane-head { grid-area: head; font: 13px/1.45 var(--chrome); }
+  .pane-lists { grid-area: lists; font: 13px/1.45 var(--chrome); }
   .post-index-list { max-height: 14em; }
-}
 
-.note { opacity: .75; }
+  .news li { grid-template-columns: minmax(0, 1fr); gap: .2em; }
+  .threads li, .threads-head { grid-template-columns: minmax(0, 1fr); gap: .2em; }
+  .threads-head span + span { display: none; }
+
+}
 
 /* ------------------------------------------------------------ components */
 
 /* Centred labels. Components whose text sits inside a visible edge list
    themselves here. `text-box` trims each line box to the capitals and the
    baseline, so the label is centred exactly, whatever the font's metrics.
-   Browsers without it fall back to `line-height: 1`, which is centred for
-   Arial and close for Helvetica. Components set their padding with
-   --label-pad and get the same height either way. */
-.button, .speech, .codeblock-bar, .post-index-bar {
-  /* each component can set its own padding with --label-pad */
+   Browsers without it fall back to `line-height: 1`. Components set their
+   padding with --label-pad and get the same height either way. */
+.button, .speech, .codeblock-bar, .post-index-bar, .toc-bar, .threads-head, .forum-post-bar,
+.comments-bar {
   --pad-y: var(--label-pad, .6em);
   line-height: 1;
   padding-top: var(--pad-y);
@@ -372,7 +698,8 @@ html { scroll-behavior: smooth; }
 }
 
 @supports (text-box: trim-both cap alphabetic) {
-  .button, .speech, .codeblock-bar, .post-index-bar {
+  .button, .speech, .codeblock-bar, .post-index-bar, .toc-bar, .threads-head, .forum-post-bar,
+.comments-bar {
     text-box: trim-both cap alphabetic;
     /* add back the height the trim removed */
     --pad-y: calc(var(--label-pad, .6em) + (1em - 1cap) / 2);
@@ -384,10 +711,10 @@ html { scroll-behavior: smooth; }
 .button {
   display: inline-block;
   padding-inline: 1em;
-  color: #222;
-  font-weight: bold;
+  color: var(--ink);
+  font: bold 13px/1 var(--chrome);
   text-decoration: none;
-  text-shadow: 0 1px 0 #ffffffbf;
+  text-shadow: var(--press);
   background: linear-gradient(#eee, #ccc);
   border: 1px solid #aaa;
   border-bottom-color: #999;
@@ -395,15 +722,14 @@ html { scroll-behavior: smooth; }
   box-shadow: inset 0 1px 0 #ffffffbf, 0 1px 2px rgba(0, 0, 0, .2);
 }
 
-.button:hover { background: linear-gradient(#fff, #ddd); }
+.button:visited { color: var(--ink); }
+.button:hover { color: var(--ink); background: linear-gradient(#fff, #ddd); }
 
 .button:active {
   background: linear-gradient(#c4c4c4, #d8d8d8);
   border-color: #999;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, .25);
 }
-
-.button:focus-visible { outline: 2px solid #222; outline-offset: 2px; }
 
 /* Bordered image: a two-tone edge, 1px dark at the very edge with 1px light
    just inside it, drawn over the image's outer pixels. Bright images show the
@@ -458,7 +784,9 @@ html { scroll-behavior: smooth; }
 
 .domo .shut, .domo .wide, .domo .sleep { opacity: 0; }
 
-/* talking: the mouth flaps while the bubble shows */
+/* talking: the mouth flaps while the bubble shows. The open frame hides
+   exactly while the shut one shows: only one frame is ever visible, or their
+   soft shadows would stack and darken his eyes on every flap. */
 .domo .shut { animation: domo-flap .4s step-end .5s 9; }
 
 @keyframes domo-flap {
@@ -466,8 +794,15 @@ html { scroll-behavior: smooth; }
   50% { opacity: 0; }
 }
 
+@keyframes domo-unflap {
+  0%  { opacity: 0; }
+  50% { opacity: 1; }
+}
+
 /* falling asleep: swap the open frame for the sleeping one, for good */
-.domo .open  { animation: domo-hide 0s var(--sleep-after) forwards; }
+.domo .open  {
+  animation: domo-unflap .4s step-end .5s 9, domo-hide 0s var(--sleep-after) forwards;
+}
 .domo .sleep { animation: domo-show 0s var(--sleep-after) forwards; }
 
 @keyframes domo-hide { to { opacity: 0; } }
@@ -477,7 +812,7 @@ html { scroll-behavior: smooth; }
   position: absolute;
   left: calc(100% + 4px);
   top: -6px;
-  font: bold 11px/1 var(--mono, monospace);
+  font: bold 11px/1 var(--mono);
   letter-spacing: 1px;
   opacity: 0;
   pointer-events: none;
@@ -509,7 +844,7 @@ html { scroll-behavior: smooth; }
   width: max-content;
   max-width: 190px;
   padding-inline: .75em;
-  font-size: 12px;
+  font: 12px/1 var(--chrome);
   opacity: 0;
   pointer-events: none;
   background: linear-gradient(#fff, #e9e9e9);
@@ -542,5 +877,6 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   /* no flapping mouth or blinking zzz; he still talks and still sleeps */
   .domo .shut { animation: none; }
+  .domo .open { animation: domo-hide 0s var(--sleep-after) forwards; }
   .zzz { animation: domo-show 0s var(--sleep-after) forwards; }
 }

@@ -8,13 +8,15 @@ import Site.GitHub
 
 Every page has two panes:
 
-* **Left** (always visible), in three rows:
-  1. the intro: the pixel Domo and the "be back later" note;
-  2. a sitemap of the top-level pages, then a container for each collection
-     (Blog, Articles): a header bar linking to its index, above a scrollable
-     list of its entries with their dates (the current page is marked);
-  3. a dark container with social link icons, pinned to the bottom.
-* **Right**: the page's own content.
+* **Left** (always visible), in two parts:
+  1. the head (`.pane-head`): the pixel Domo, the "be back later" note and a
+     sitemap of the top-level pages;
+  2. the lists (`.pane-lists`): a container for each collection (Blog,
+     Articles), a header bar linking to its index above a scrollable list of
+     its entries with their dates (the current page is marked), and a dark
+     container with social link icons, pinned to the bottom.
+  On phones the head goes above the page and the lists below it.
+* **Right**: breadcrumbs (on every page but home), then the page's own content.
 
 Styling lives in `static/style.css`. -/
 
@@ -107,31 +109,49 @@ def collectionIndex (here : String) (c : Collection) : Html :=
 /-- The left pane, for the page at `here`. `line` is what Domo says there. -/
 def leftPane (ctx : Ctx) (here : String) (line : Option String) : Html :=
   el "aside" [("class", "pane-left")] [
-    el "section" [("class", "intro")] [
-      el "p" [] [domo line],
-      el "p" [] [
-        txt "My site will be back, sometime.", el "br",
-        el "span" [("class", "note")] [txt "Don't bet your life on it."]
-      ]
-    ],
-    el "section" [("class", "context")] [sitemap here],
-    collectionIndex here ctx.blog,
-    collectionIndex here ctx.articles,
-    el "section" [("class", "social")] [
-      el "ul" [] <| socialLinks.map fun (label, href, icon) =>
-        el "li" [] [
-          el "a" [("href", href), ("title", label), ("class", "tile")] [
-            el "img" [("src", icon), ("alt", label), ("width", "16"), ("height", "16")]
-          ]
+    el "div" [("class", "pane-head")] [
+      el "section" [("class", "intro")] [
+        el "p" [] [domo line],
+        el "p" [] [
+          txt "My site will be back, sometime.", el "br",
+          el "span" [("class", "note")] [txt "Don't bet your life on it."]
         ]
+      ],
+      el "section" [("class", "context")] [sitemap here]
+    ],
+    el "div" [("class", "pane-lists")] [
+      collectionIndex here ctx.blog,
+      collectionIndex here ctx.articles,
+      el "section" [("class", "social")] [
+        el "ul" [] <| socialLinks.map fun (label, href, icon) =>
+          el "li" [] [
+            el "a" [("href", href), ("title", label), ("class", "tile")] [
+              el "img" [("src", icon), ("alt", label), ("width", "16"), ("height", "16")]
+            ]
+          ]
+      ]
     ]
   ]
 
+/-- Breadcrumbs above the page: the site's name (linking home), then each
+step of `trail` as `(label, href)`. The last step is the page itself and is
+not a link. Nothing on the home page (an empty trail). -/
+def breadcrumbs (trail : List (String × Option String)) : List Html :=
+  if trail.isEmpty then [] else
+  let step : String × Option String → Html
+    | (label, some href) => el "li" [] [link href [txt label]]
+    | (label, none) => el "li" [] [el "span" [] [txt label]]
+  [el "nav" [("class", "breadcrumbs"), ("aria-label", "Breadcrumbs")] [
+    el "ol" [] (step (siteName, some "/") :: trail.map step)
+  ]]
+
 /-- The full HTML document for the page at path `here`: the left pane, then
-`body` in the right pane, then `side` (the table of contents, if any) in a
-third column. `line` is what Domo says on this page, if anything. -/
+`body` in the right pane under the breadcrumbs for `trail`, then `side` (the
+table of contents, if any) in a third column. `line` is what Domo says on this
+page, if anything. -/
 def layout (ctx : Ctx) (here : String) (pageTitle : Option String)
-    (body : List Html) (line : Option String := none) (side : List Html := []) : String :=
+    (body : List Html) (line : Option String := none) (side : List Html := [])
+    (trail : List (String × Option String) := []) : String :=
   let t := match pageTitle with
     | some pt => s!"{pt} — {siteName}"
     | none => siteName
@@ -144,18 +164,27 @@ def layout (ctx : Ctx) (here : String) (pageTitle : Option String)
     ],
     el "body" [] ([
       leftPane ctx here line,
-      el "main" [("class", "pane-right")] body
+      el "main" [("class", "pane-right")] (breadcrumbs trail ++ body)
     ] ++ side)
   ]
 
+/-- A collection's entries as a forum's thread list: a header row naming the
+columns, then one row per entry with its title and summary beside its date. -/
 def postList (c : Collection) : Html :=
-  if c.entries.isEmpty then el "p" [] [txt c.empty]
-  else el "ul" [] <| c.entries.map fun p =>
-    let summary := match p.summary with
-      | some s => [el "br", el "span" [("class", "note")] [txt s]]
-      | none => []
-    el "li" [] ([link (postUrl p) [txt p.title], txt " ",
-      el "span" [("class", "note")] [dateTag p.date]] ++ summary)
+  el "div" [("class", "threads")] [
+    el "div" [("class", "threads-head"), ("aria-hidden", "true")] [
+      el "span" [] [txt "Title"], el "span" [] [txt "Date"]
+    ],
+    if c.entries.isEmpty then el "p" [("class", "note")] [txt c.empty]
+    else el "ul" [] <| c.entries.map fun p =>
+      let summary := match p.summary with
+        | some s => [el "br", el "span" [("class", "note")] [txt s]]
+        | none => []
+      el "li" [] [
+        el "div" [] ([link (postUrl p) [txt p.title]] ++ summary),
+        el "span" [("class", "note")] [dateTag p.date]
+      ]
+  ]
 
 /-- An image with the site's two-tone edge (see `.bordered` in style.css). Pass
 the image's pixel size when known, so the page doesn't jump as it loads. -/
@@ -192,7 +221,7 @@ def listeningSection (listening : Option (List LastFm.Track × Nat)) : List Html
   match listening with
   | none => []
   | some (tracks, now) => [
-    el "section" [("class", "post-index panel listening"), ("aria-label", "Recently played")] [
+    el "section" [("class", "post-index panel listening dark"), ("aria-label", "Recently played")] [
       el "div" [("class", "post-index-bar")] [link LastFm.profileUrl [txt "Recently played"]],
       el "div" [("class", "post-index-list")] [
         if tracks.isEmpty then el "p" [("class", "note")] [txt "Nothing played recently."]
@@ -278,6 +307,7 @@ heading level, which sets its indent. It goes in the page's third column
 def toc (entries : List Markdown.TocEntry) : List Html :=
   if entries.length < 2 then [] else
   [el "nav" [("class", "toc"), ("aria-label", "Table of contents")] [
+    el "div" [("class", "toc-bar")] [txt "On this page"],
     el "ul" [] <| entries.map fun e =>
       el "li" [("class", s!"d{e.level}")] [link s!"#{e.id}" [txt e.title]]
   ]]
@@ -290,12 +320,58 @@ def page (ctx : Ctx) (here title : String) (body : List Markdown.Block) : String
 /-- A collection's index page: every entry with its date and summary. -/
 def collectionPage (ctx : Ctx) (c : Collection) : String :=
   layout ctx s!"/{c.key}/" (some c.title) [el "h1" [] [txt c.title], postList c]
+    (trail := [(c.title, none)])
 
+/-- Comments on posts, by giscus (https://giscus.app): each post's comments
+are a GitHub Discussion in this site's repository, found by the post's path,
+in the Announcements category (where only giscus and the owner can start
+one). Giscus's script is the site's one exception to "no JavaScript" (see
+`Html.allowedScripts`); it draws the comments in its own frame, styled by
+`static/giscus.css`, which giscus fetches from the live site at `themeUrl`:
+from another origin, so the server must allow that (GitHub Pages does), and
+from a public address, since browsers won't let giscus.app fetch from your
+own machine, so a local preview shows the deployed theme. -/
+structure Giscus where
+  repo : String := "kekatomb/kekatomb.github.io"
+  repoId : String := "R_kgDOVd1fnA"
+  category : String := "Announcements"
+  categoryId : String := "DIC_kwDOVd1fnM4DKEFl"
+  themeUrl : String := s!"https://{siteName}/giscus.css"
+
+/-- The comments under a post: a bar, then the giscus frame in a well. -/
+def comments (g : Giscus := {}) : Html :=
+  el "section" [("class", "comments"), ("aria-label", "Comments")] [
+    el "div" [("class", "comments-bar")] [txt "Comments"],
+    el "div" [("class", "giscus")] [
+      .script "https://giscus.app/client.js" [
+        ("data-repo", g.repo), ("data-repo-id", g.repoId),
+        ("data-category", g.category), ("data-category-id", g.categoryId),
+        ("data-mapping", "pathname"), ("data-strict", "1"),
+        ("data-reactions-enabled", "0"), ("data-emit-metadata", "0"),
+        ("data-input-position", "bottom"), ("data-theme", g.themeUrl),
+        ("data-lang", "en"), ("data-loading", "lazy")
+      ]
+    ]
+  ]
+
+/-- A post, laid out like the first post of a forum thread: the title, then
+a box with the date in its bar, and the body, ending with its footnotes. The
+box has a right-hand column for the post's margin notes (`^[…]` in Markdown). -/
 def post (ctx : Ctx) (p : Post) : String :=
   let (html, entries) := Markdown.toHtmlWithToc p.body
+  let coll := (ctx.collections.find? (·.key == p.kind)).map (·.title) |>.getD p.kind
   layout ctx (postUrl p) (some p.title) [
-    el "article" [] <|
-      [el "h1" [] [txt p.title], el "p" [("class", "note")] [dateTag p.date]] ++ html
-  ] (line := p.domo) (side := toc entries)
+    el "article" [] [
+      el "h1" [] [txt p.title],
+      el "div" [("class", "forum-post")] [
+        el "div" [("class", "forum-post-bar")] [
+          dateTag p.date,
+          el "a" [("href", postUrl p), ("title", "Link to this post")] [txt "Permalink"]
+        ],
+        el "div" [("class", "forum-post-body")] html
+      ],
+      comments
+    ]
+  ] (line := p.domo) (side := toc entries) (trail := [(coll, some s!"/{p.kind}/"), (p.title, none)])
 
 end Site.Pages

@@ -20,6 +20,30 @@ open Site Markdown
 /-! ## Blocks -/
 #guard render "# Hello *world* #" == "<h1>Hello <em>world</em></h1>\n"
 #guard render "###### six" == "<h6>six</h6>\n"
+-- margin notes: `^[…]`, parsed like any inline text, links included
+#guard render "a^[see *this* and [that](/x)] b" ==
+  "<p>a<span class=\"note-anchor\"><span class=\"note-ref\" aria-hidden=\"true\"></span><small class=\"sidenote\"><span class=\"note-cover\" aria-hidden=\"true\"></span><span class=\"sidenote-text\">see <em>this</em> and <a href=\"/x\">that</a></span></small><small class=\"note-room\" aria-hidden=\"true\">see this and that</small></span> b</p>\n"
+#guard render "2^[unclosed" == "<p>2^[unclosed</p>\n"
+#guard render "x^2 and [y](/z)" == "<p>x^2 and <a href=\"/z\">y</a></p>\n"
+-- footnotes: bracketed links, numbered by first reference, listed at the end
+-- with links back; the first reference to each carries the back link's target
+#guard render "b[^z] a[^y] c[^z]\n\n[^y]: Why.\n[^z]: Zed\n  continued." ==
+  "<p>b<a href=\"#fn-z\" class=\"footnote-ref\" aria-label=\"Footnote 1\" id=\"fnref-z\">[1]</a> " ++
+  "a<a href=\"#fn-y\" class=\"footnote-ref\" aria-label=\"Footnote 2\" id=\"fnref-y\">[2]</a> " ++
+  "c<a href=\"#fn-z\" class=\"footnote-ref\" aria-label=\"Footnote 1\">[1]</a></p>\n" ++
+  "<section class=\"footnotes\" aria-label=\"Footnotes\"><ol><li id=\"fn-z\">Zed\ncontinued. " ++
+  "<a href=\"#fnref-z\" class=\"footnote-back\" aria-label=\"Back to the text of footnote 1\">↩</a></li>\n" ++
+  "<li id=\"fn-y\">Why. " ++
+  "<a href=\"#fnref-y\" class=\"footnote-back\" aria-label=\"Back to the text of footnote 2\">↩</a></li>\n" ++
+  "</ol>\n</section>\n"
+-- undefined: left as written; unreferenced: left out; no footnotes, no list
+#guard render "a[^nope]\n\n[^unused]: x" == "<p>a[^nope]</p>\n"
+#guard render "[^ x] and [^]" == "<p>[^ x] and [^]</p>\n"
+-- an image in a note: shown in the note, and taking up room in its copy
+#guard render "a^[![A cat](/c.png)]" ==
+  "<p>a<span class=\"note-anchor\"><span class=\"note-ref\" aria-hidden=\"true\"></span><small class=\"sidenote\"><span class=\"note-cover\" aria-hidden=\"true\"></span><span class=\"sidenote-text\"><img src=\"/c.png\" alt=\"A cat\"></span></small><small class=\"note-room\" aria-hidden=\"true\"><img src=\"/c.png\" alt=\"\"></small></span></p>\n"
+-- a note in a heading stays out of its id and the table of contents
+#guard (toHtmlWithToc (parse "## One^[n]")).2.map (·.id) == ["one"]
 #guard render "####### seven" == "<p>####### seven</p>\n"
 #guard render "one\ntwo\n\nthree" == "<p>one\ntwo</p>\n<p>three</p>\n"
 #guard render "```lean\ndef x := 1 < 2\n```" ==
@@ -64,6 +88,10 @@ open Site Markdown
 #guard render "[m](mailto:me@example.org) [r](../up)" ==
   "<p><a href=\"mailto:me@example.org\">m</a> <a href=\"../up\">r</a></p>\n"
 #guard Html.render (.elem "script" [] [.text "alert(1)"]) == "alert(1)"
+-- the one exception: giscus's script, and only with `data-` settings
+#guard Html.render (.script "https://evil.example/x.js" [("data-a", "b")]) == ""
+#guard Html.render (.script "https://giscus.app/client.js" [("data-a", "\"x"), ("onload", "y")]) ==
+  "<script src=\"https://giscus.app/client.js\" data-a=\"&quot;x\" crossorigin=\"anonymous\" async></script>\n"
 #guard Html.render (.elem "p" [("onclick", "x"), ("style", "y"), ("id", "z")] []) ==
   "<p id=\"z\"></p>\n"
 #guard Html.sanitizeUrl " java\tscript:x" == "#"
@@ -129,6 +157,25 @@ def articleIndexOf (pg : String) := navSection pg "<nav class=\"post-index\" ari
 #guard (blogPage.splitOn "<a href=\"/blog/\" class=\"current\" aria-current=\"page\">Blog</a>").length == 2
 #guard (postPage.splitOn "<a href=\"/blog/x/\" class=\"current\" aria-current=\"page\">X</a>").length == 2
 #guard [homePage, blogPage, postPage].all fun pg => (pg.splitOn "aria-current").length == 2
+-- breadcrumbs on every page but home, ending with the page itself (not a link)
+def crumbsOf (pg : String) := navSection pg "<nav class=\"breadcrumbs\" aria-label=\"Breadcrumbs\">"
+#guard (homePage.splitOn "class=\"breadcrumbs\"").length == 1
+#guard ((crumbsOf blogPage).splitOn "<li><a href=\"/\">lindg.re</a></li>").length == 2
+#guard ((crumbsOf blogPage).splitOn "<li><span>Blog</span></li>").length == 2
+#guard ((crumbsOf postPage).splitOn "<li><a href=\"/blog/\">Blog</a></li>").length == 2
+#guard ((crumbsOf postPage).splitOn "<li><span>X</span></li>").length == 2
+#guard ((crumbsOf (Pages.post sampleCtx sampleArticle)).splitOn
+  "<li><a href=\"/articles/\">Articles</a></li>").length == 2
+-- posts have giscus comments; other pages have no script at all
+#guard (postPage.splitOn "<script src=\"https://giscus.app/client.js\" data-repo=\"kekatomb/kekatomb.github.io\"").length == 2
+#guard (postPage.splitOn "data-theme=\"https://lindg.re/giscus.css\"").length == 2
+#guard [homePage, blogPage].all fun pg => (pg.splitOn "<script").length == 1
+-- a post is laid out as a forum post, without a signature
+#guard (postPage.splitOn "class=\"signature\"").length == 1
+#guard (postPage.splitOn "class=\"domo\"").length == 2
+-- the blog's index lists its entries as threads
+#guard (blogPage.splitOn "<div class=\"threads\">").length == 2
+#guard ((Pages.collectionPage {} Pages.blog).splitOn "No posts yet.").length == 3
 
 /-! ## Pixel Domo -/
 #guard Domo.runs "..##.###.".toList == [(2, 2), (5, 3)]

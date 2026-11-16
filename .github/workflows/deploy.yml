@@ -50,8 +50,12 @@ jobs:
       - name: Check for JavaScript
         # All text is HTML-escaped, so every literal <...> is a real tag.
         # Look inside tags only, so posts can still *mention* these things.
+        # The one script allowed is giscus's, for comments on posts (see
+        # Html.allowedScripts); any other script fails the build.
         run: |
-          if grep -rhoiE '<[^>]*>' _site | grep -iE '^<script|javascript:|[[:space:]]on[a-z]+=|^<(iframe|object|embed)'; then
+          if grep -rhoiE '<[^>]*>' _site \
+              | grep -vE '^<script src="https://giscus\.app/client\.js"( data-[a-z-]+="[^"]*")* crossorigin="anonymous" async>$' \
+              | grep -iE '^<script|javascript:|[[:space:]]on[a-z]+=|^<(iframe|object|embed)'; then
             echo "::error::JavaScript found in generated site"
             exit 1
           fi
