@@ -290,15 +290,20 @@ structure Home where
   news : List NewsItem := []
   /-- Recent Last.fm tracks and the build time; `none` when not fetched. -/
   listening : Option (List LastFm.Track × Nat) := none
+  /-- The Last.fm API key, for `site.js` to refresh the tracks in the browser.
+  It's read-only, so it's fine in the page. -/
+  lastfmKey : Option String := none
 
 /-- The home page: the intro and the "now" line, the news, and the projects
-and recently played side by side. -/
+and recently played side by side. Then the site's script, which refreshes
+the "now" line and recently played in the browser (see `static/site.js`). -/
 def home (ctx : Ctx) (h : Home := {}) : String :=
   let panels := projectsSection h.pinned ++ listeningSection h.listening
   layout ctx "/" none <|
     [el "section" [("class", "intro")] (Markdown.toHtml h.intro ++ nowLine h.recent)] ++
     newsSection h.news ++
-    (if panels.isEmpty then [] else [el "div" [("class", "panels")] panels])
+    (if panels.isEmpty then [] else [el "div" [("class", "panels")] panels]) ++
+    [.script "/site.js" (h.lastfmKey.toList.map fun k => ("data-lastfm-key", k))]
 
 /-- The table of contents for a page's sections, or nothing when it has
 fewer than two. A flat list; each entry's class (`d2`, `d3`, `d4`) is its
@@ -325,7 +330,7 @@ def collectionPage (ctx : Ctx) (c : Collection) : String :=
 /-- Comments on posts, by giscus (https://giscus.app): each post's comments
 are a GitHub Discussion in this site's repository, found by the post's path,
 in the Announcements category (where only giscus and the owner can start
-one). Giscus's script is the site's one exception to "no JavaScript" (see
+one). Giscus's script is one of the two the site allows (see
 `Html.allowedScripts`); it draws the comments in its own frame, styled by
 `static/giscus.css`, which giscus fetches from the live site at `themeUrl`:
 from another origin, so the server must allow that (GitHub Pages does), and

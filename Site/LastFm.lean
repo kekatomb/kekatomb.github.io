@@ -3,10 +3,12 @@ import Lean.Data.Json
 /-!
 # Last.fm: recently played
 
-The home page shows the most recent tracks scrobbled to Last.fm. There's no
-JavaScript, so they're fetched while the site is built (see `fetchRecent` in
-`Main.lean`) and written into the page. The deploy workflow rebuilds the site
-every hour to keep them fresh.
+The home page shows the most recent tracks scrobbled to Last.fm. They're
+fetched while the site is built (see `fetchListening` in `Main.lean`) and
+written into the page, so it shows them without JavaScript; then
+`static/site.js` fetches them again in the browser, so they're current when
+the page is read. Its rules (the cover it picks, "3 hours ago") mirror this
+module's.
 
 This module only parses the API's JSON and formats the times, so it can be
 tested without the network.

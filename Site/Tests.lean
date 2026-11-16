@@ -77,7 +77,7 @@ open Site Markdown
   "<p><a href=\"https://en.wikipedia.org/wiki/Lean_(proof_assistant)\">w</a></p>\n"
 #guard render "![alt text](/img.png)" == "<p><img src=\"/img.png\" alt=\"alt text\"></p>\n"
 
-/-! ## No JavaScript, ever -/
+/-! ## No JavaScript from content: only the scripts the templates name -/
 #guard render "<script>alert(1)</script>" == "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>\n"
 #guard render "<img src=x onerror=alert(1)>" == "<p>&lt;img src=x onerror=alert(1)&gt;</p>\n"
 #guard render "[a](javascript:alert(1))" == "<p><a href=\"#\">a</a></p>\n"
@@ -88,8 +88,12 @@ open Site Markdown
 #guard render "[m](mailto:me@example.org) [r](../up)" ==
   "<p><a href=\"mailto:me@example.org\">m</a> <a href=\"../up\">r</a></p>\n"
 #guard Html.render (.elem "script" [] [.text "alert(1)"]) == "alert(1)"
--- the one exception: giscus's script, and only with `data-` settings
+-- scripts: only the allowed ones, and only with `data-` settings; the site's
+-- own deferred, others without cookies
 #guard Html.render (.script "https://evil.example/x.js" [("data-a", "b")]) == ""
+#guard Html.render (.script "/evil.js" []) == ""
+#guard Html.render (.script "/site.js" [("data-lastfm-key", "k"), ("onload", "y")]) ==
+  "<script src=\"/site.js\" data-lastfm-key=\"k\" defer></script>\n"
 #guard Html.render (.script "https://giscus.app/client.js" [("data-a", "\"x"), ("onload", "y")]) ==
   "<script src=\"https://giscus.app/client.js\" data-a=\"&quot;x\" crossorigin=\"anonymous\" async></script>\n"
 #guard Html.render (.elem "p" [("onclick", "x"), ("style", "y"), ("id", "z")] []) ==
@@ -169,7 +173,13 @@ def crumbsOf (pg : String) := navSection pg "<nav class=\"breadcrumbs\" aria-lab
 -- posts have giscus comments; other pages have no script at all
 #guard (postPage.splitOn "<script src=\"https://giscus.app/client.js\" data-repo=\"kekatomb/kekatomb.github.io\"").length == 2
 #guard (postPage.splitOn "data-theme=\"https://lindg.re/giscus.css\"").length == 2
-#guard [homePage, blogPage].all fun pg => (pg.splitOn "<script").length == 1
+#guard (blogPage.splitOn "<script").length == 1
+-- the home page has the site's own script, and only that, with the Last.fm
+-- key when there is one
+#guard (homePage.splitOn "<script").length == 2 &&
+  (homePage.splitOn "<script src=\"/site.js\" defer></script>").length == 2
+#guard ((Pages.home sampleCtx { lastfmKey := some "k" }).splitOn
+  "<script src=\"/site.js\" data-lastfm-key=\"k\" defer></script>").length == 2
 -- a post is laid out as a forum post, without a signature
 #guard (postPage.splitOn "class=\"signature\"").length == 1
 #guard (postPage.splitOn "class=\"domo\"").length == 2

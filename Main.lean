@@ -137,7 +137,8 @@ def build : IO Unit := do
     then pure (Markdown.parse (← IO.FS.readFile introPath)) else pure []
   let (recent, pinned) ← fetchGitHub envFile
   writePage (outDir / "index.html") <| Pages.home ctx {
-    intro, recent, pinned, news := ← loadNews, listening := ← fetchListening envFile }
+    intro, recent, pinned, news := ← loadNews, listening := ← fetchListening envFile
+    lastfmKey := ← Env.lookup envFile "LASTFM_API_KEY" }
   for c in ctx.collections do
     writePage (outDir / c.key / "index.html") (Pages.collectionPage ctx c)
     for p in c.entries do

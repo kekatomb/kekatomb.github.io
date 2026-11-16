@@ -3,7 +3,8 @@ import Site.Util
 /-!
 # HTML tree and renderer
 
-This module is where the "no JavaScript" guarantee lives:
+This module is where the "minimal JavaScript" rule lives. Nothing the pages
+are built from (Markdown, titles, data from APIs) can add a script:
 
 * There is no raw-HTML node. Every string gets escaped.
 * Only tags in `allowedTags` are emitted. Any other element (`script`,
@@ -13,11 +14,11 @@ This module is where the "no JavaScript" guarantee lives:
 * `href` and `src` values pass through `sanitizeUrl`, which only allows
   relative URLs and the `http`, `https` and `mailto` schemes.
 
-There is one exception, and it is explicit: the `script` node, which renders
-only for a source listed in `allowedScripts` (giscus, for comments on posts).
-A script from anywhere else renders as nothing. Markdown can never produce
-one; only the templates do. The deploy workflow checks the built site for
-any other script.
+Scripts are explicit: the `script` node, which renders only for a source
+listed in `allowedScripts` (the site's own `site.js`, and giscus for
+comments on posts). A script from anywhere else renders as nothing. Markdown
+can never produce one; only the templates do. The deploy workflow checks the
+built site for any other script.
 -/
 
 namespace Site
@@ -25,8 +26,8 @@ namespace Site
 inductive Html where
   | elem (tag : String) (attrs : List (String × String)) (children : List Html)
   | text (s : String)
-  /-- An external script, from `allowedScripts` only, with its settings as
-  `data-*` attributes. -/
+  /-- A script, from `allowedScripts` only, with its settings as `data-*`
+  attributes. -/
   | script (src : String) (data : List (String × String))
 
 instance : Inhabited Html := ⟨.text ""⟩
@@ -45,8 +46,10 @@ def allowedAttrs : List String :=
   , "name", "content", "datetime", "rel", "start", "width", "height"
   , "aria-current", "aria-label", "aria-hidden" ]
 
-/-- The only scripts the site may load: giscus, for comments on posts. -/
-def allowedScripts : List String := ["https://giscus.app/client.js"]
+/-- The only scripts the site may load: its own (`static/site.js`, which
+refreshes the live parts of the home page), and giscus, for comments on
+posts. -/
+def allowedScripts : List String := ["/site.js", "https://giscus.app/client.js"]
 
 def voidTags : List String := ["br", "hr", "img", "meta", "link"]
 
@@ -91,7 +94,10 @@ partial def render : Html → String
     -- only `data-` attributes, so its settings can't smuggle in handlers
     let as := String.join <| (data.filter (·.1.startsWith "data-")).map fun (k, v) =>
       s!" {k.toLower}=\"{escape v}\""
-    s!"<script src=\"{src}\"{as} crossorigin=\"anonymous\" async></script>\n"
+    -- the site's own script runs once the page is parsed; another site's
+    -- loads without sending cookies, whenever it's ready
+    if src.startsWith "/" then s!"<script src=\"{src}\"{as} defer></script>\n"
+    else s!"<script src=\"{src}\"{as} crossorigin=\"anonymous\" async></script>\n"
   | .elem tag attrs children =>
     let inner := String.join (children.map render)
     let tag := tag.toLower

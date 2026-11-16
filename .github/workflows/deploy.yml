@@ -4,9 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # rebuild hourly so the Last.fm and GitHub parts of the home page stay fresh
+  # rebuild daily, for the pinned projects and so the home page's build-time
+  # copies of Recently played and the "now" line aren't far behind (in the
+  # browser, static/site.js refreshes those two anyway)
   schedule:
-    - cron: "17 * * * *"
+    - cron: "17 5 * * *"
 
 permissions:
   contents: read
@@ -50,13 +52,15 @@ jobs:
       - name: Check for JavaScript
         # All text is HTML-escaped, so every literal <...> is a real tag.
         # Look inside tags only, so posts can still *mention* these things.
-        # The one script allowed is giscus's, for comments on posts (see
-        # Html.allowedScripts); any other script fails the build.
+        # The only scripts allowed are the site's own (site.js) and giscus's,
+        # for comments on posts (see Html.allowedScripts); any other script,
+        # inline code or event handler fails the build.
         run: |
           if grep -rhoiE '<[^>]*>' _site \
+              | grep -vE '^<script src="/site\.js"( data-[a-z-]+="[^"]*")* defer>$' \
               | grep -vE '^<script src="https://giscus\.app/client\.js"( data-[a-z-]+="[^"]*")* crossorigin="anonymous" async>$' \
               | grep -iE '^<script|javascript:|[[:space:]]on[a-z]+=|^<(iframe|object|embed)'; then
-            echo "::error::JavaScript found in generated site"
+            echo "::error::Unexpected JavaScript found in generated site"
             exit 1
           fi
 
