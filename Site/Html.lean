@@ -44,7 +44,7 @@ def allowedTags : List String :=
 def allowedAttrs : List String :=
   [ "href", "src", "alt", "title", "class", "id", "lang", "charset"
   , "name", "content", "datetime", "rel", "start", "width", "height"
-  , "aria-current", "aria-label", "aria-hidden" ]
+  , "aria-current", "aria-label", "aria-hidden", "hidden" ]
 
 /-- The only scripts the site may load: its own (`static/site.js`, which
 refreshes the live parts of the home page), and giscus, for comments on

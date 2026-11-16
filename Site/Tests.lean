@@ -233,40 +233,17 @@ def tocPost : Post := { samplePostValue with body := tocDoc }
 #guard (postPage.splitOn "class=\"toc\"").length == 1
 
 /-! ## Home: news and Last.fm -/
-def sampleJson : String :=
-  "{\"recenttracks\":{\"track\":[" ++
-  "{\"artist\":{\"#text\":\"Boards of Canada\"},\"name\":\"Roygbiv\",\"url\":\"https://www.last.fm/music/x\",\"@attr\":{\"nowplaying\":\"true\"}}," ++
-  "{\"artist\":{\"#text\":\"Aphex Twin\"},\"name\":\"Xtal\",\"url\":\"https://www.last.fm/music/y\",\"date\":{\"uts\":\"1000\",\"#text\":\"x\"}}" ++
-  "]}}"
-#guard (LastFm.parseRecent sampleJson).toOption.map (·.map (·.name)) == some ["Roygbiv", "Xtal"]
-#guard (LastFm.parseRecent sampleJson).toOption.map (·.map (·.nowPlaying)) == some [true, false]
--- a single track arrives as an object, not a list
-#guard (LastFm.parseRecent "{\"recenttracks\":{\"track\":{\"artist\":{\"#text\":\"A\"},\"name\":\"B\",\"url\":\"u\"}}}").toOption.map (·.length) == some 1
-#guard (LastFm.parseRecent "not json").toOption.isNone
--- the cover: "large" if given, else the biggest other size; the placeholder star counts as none
-#guard (LastFm.parseRecent ("{\"recenttracks\":{\"track\":[{\"artist\":{\"#text\":\"A\"},\"name\":\"B\",\"url\":\"u\"," ++
-  "\"image\":[{\"size\":\"small\",\"#text\":\"s.jpg\"},{\"size\":\"extralarge\",\"#text\":\"xl.jpg\"}]}," ++
-  "{\"artist\":{\"#text\":\"C\"},\"name\":\"D\",\"url\":\"u\"," ++
-  "\"image\":[{\"size\":\"large\",\"#text\":\"https://x/2a96cbd8b46e442fc41c2b86b821562f.png\"}]}]}}")).toOption.map (·.map (·.image))
-  == some [some "xl.jpg", none]
-def playedAt (s : Nat) : LastFm.Track := { artist := "", name := "", url := "", playedAt := some s, nowPlaying := false }
-#guard LastFm.ago 1030 (playedAt 1000) == "just now"
-#guard LastFm.ago 1060 (playedAt 1000) == "1 minute ago"
-#guard LastFm.ago (1000 + 3 * 3600) (playedAt 1000) == "3 hours ago"
-#guard LastFm.ago (1000 + 86400) (playedAt 1000) == "1 day ago"
 def homeFull : String :=
   Pages.home sampleCtx {
     news := [{ date := ⟨2026, 11, 14⟩, body := Markdown.parse "Hello *news*." }],
-    listening := (LastFm.parseRecent sampleJson).toOption.map (·, 1000) }
+    lastfmKey := some "k" }
 #guard (homeFull.splitOn "<h2>News</h2>").length == 2
 #guard (homeFull.splitOn "<p>Hello <em>news</em>.</p>").length == 2
-#guard (homeFull.splitOn "<a href=\"https://www.last.fm/user/kekatomb\">Recently played</a>").length == 2
-#guard (homeFull.splitOn "now playing").length == 2
--- tracks without a cover still get an (empty) cover box, so the rows line up
-#guard (homeFull.splitOn "<span class=\"cover\"></span>").length == 3
--- Last.fm answered with no tracks: the container says so
-#guard ((Pages.home sampleCtx { listening := some ([], 0) }).splitOn "Nothing played recently.").length == 2
--- no news, and no Last.fm data at all: neither section appears
+-- recently played: written empty and hidden, for site.js to fill in and show
+#guard (homeFull.splitOn ("<section class=\"post-index panel listening\" aria-label=\"Recently played\" hidden=\"\">" ++
+  "<div class=\"post-index-bar\"><a href=\"https://www.last.fm/user/kekatomb\">Recently played</a></div>\n" ++
+  "<div class=\"post-index-list\"></div>\n</section>")).length == 2
+-- no news, and no Last.fm key: neither section appears
 #guard (homePage.splitOn "News").length == 1 && (homePage.splitOn "Recently played").length == 1
 
 /-! ## .env files -/

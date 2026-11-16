@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # rebuild daily, for the pinned projects and so the home page's build-time
-  # copies of Recently played and the "now" line aren't far behind (in the
-  # browser, static/site.js refreshes those two anyway)
+  # rebuild daily, for the pinned projects, and so the home page's build-time
+  # copy of the "now" line isn't far behind (static/site.js refreshes it in
+  # the browser anyway)
   schedule:
     - cron: "17 5 * * *"
 
@@ -41,8 +41,9 @@ jobs:
         run: lake build
 
       - name: Generate site
-        # The Last.fm API key comes from the repository secret LASTFM_API_KEY.
-        # Without it, the home page is built without the Last.fm section.
+        # The Last.fm API key comes from the repository secret LASTFM_API_KEY;
+        # the build passes it to static/site.js, which fetches Recently played
+        # in the browser. Without it, the home page has no Recently played.
         # GITHUB_TOKEN is provided by Actions; it lets the build read pinned repos.
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}

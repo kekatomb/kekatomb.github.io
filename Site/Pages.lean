@@ -212,32 +212,16 @@ def newsSection (items : List NewsItem) : List Html :=
     ]
   ]
 
-/-- Recently played tracks, in a dark container like the blog's: a header
-bar linking to the Last.fm profile, above the tracks. `now` (seconds since
-1970) is when the site was built, for "3 hours ago". Nothing at all when the
-tracks couldn't be fetched (no API key, or Last.fm unreachable); a note when
-Last.fm answered but had no tracks. -/
-def listeningSection (listening : Option (List LastFm.Track × Nat)) : List Html :=
-  match listening with
-  | none => []
-  | some (tracks, now) => [
-    el "section" [("class", "post-index panel listening dark"), ("aria-label", "Recently played")] [
+/-- Recently played, in a container like the blog's: a header bar linking to
+the Last.fm profile, above the tracks. The build writes it empty and hidden,
+with nothing at all when there's no API key; `site.js` fetches the tracks in
+the browser, fills it in and shows it (see `Site/LastFm.lean`). -/
+def listeningSection (lastfmKey : Option String) : List Html :=
+  if lastfmKey.isNone then [] else [
+    el "section" [("class", "post-index panel listening"), ("aria-label", "Recently played"),
+        ("hidden", "")] [
       el "div" [("class", "post-index-bar")] [link LastFm.profileUrl [txt "Recently played"]],
-      el "div" [("class", "post-index-list")] [
-        if tracks.isEmpty then el "p" [("class", "note")] [txt "Nothing played recently."]
-        else el "ul" [] <| tracks.map fun t =>
-          let cover := match t.image with
-            | some src => [el "img" [("src", src), ("alt", ""), ("width", "48"), ("height", "48")]]
-            | none => []
-          el "li" [] [
-            el "span" [("class", "cover")] cover,
-            el "span" [] [
-              link t.url [txt t.name], el "br",
-              txt t.artist, el "br",
-              el "span" [("class", "note")] [txt (LastFm.ago now t)]
-            ]
-          ]
-      ]
+      el "div" [("class", "post-index-list")] []
     ]
   ]
 
@@ -288,17 +272,16 @@ structure Home where
   /-- Pinned repositories; `none` when they couldn't be fetched. -/
   pinned : Option (List GitHub.Repo) := none
   news : List NewsItem := []
-  /-- Recent Last.fm tracks and the build time; `none` when not fetched. -/
-  listening : Option (List LastFm.Track × Nat) := none
-  /-- The Last.fm API key, for `site.js` to refresh the tracks in the browser.
-  It's read-only, so it's fine in the page. -/
+  /-- The Last.fm API key, for `site.js` to fetch recently played in the
+  browser. It's read-only, so it's fine in the page. -/
   lastfmKey : Option String := none
 
 /-- The home page: the intro and the "now" line, the news, and the projects
 and recently played side by side. Then the site's script, which refreshes
-the "now" line and recently played in the browser (see `static/site.js`). -/
+the "now" line and fills in recently played in the browser (see
+`static/site.js`). -/
 def home (ctx : Ctx) (h : Home := {}) : String :=
-  let panels := projectsSection h.pinned ++ listeningSection h.listening
+  let panels := projectsSection h.pinned ++ listeningSection h.lastfmKey
   layout ctx "/" none <|
     [el "section" [("class", "intro")] (Markdown.toHtml h.intro ++ nowLine h.recent)] ++
     newsSection h.news ++

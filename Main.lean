@@ -1,5 +1,4 @@
 import Site
-import Std.Time
 
 /-!
 # Site builder
@@ -102,27 +101,6 @@ def loadEnvFile : IO (List (String × String)) := do
   let path : FilePath := ".env"
   if ← path.pathExists then return Env.parse (← IO.FS.readFile path) else return []
 
-/-- The most recent Last.fm tracks and the current time, fetched with `curl`
-using the API key `LASTFM_API_KEY` (from the environment, or from `.env` for
-local builds). `none` when there's no key, and with a warning when the fetch
-fails, so the build carries on without the section. -/
-def fetchListening (envFile : List (String × String)) : IO (Option (List LastFm.Track × Nat)) := do
-  let some key ← Env.lookup envFile "LASTFM_API_KEY" | return none
-  if key.isEmpty then return none
-  let out ← IO.Process.output
-    { cmd := "curl", args := #["-sf", "--max-time", "20", LastFm.apiUrl key] }
-  if out.exitCode != 0 then
-    IO.eprintln s!"warning: couldn't fetch Last.fm tracks (curl exit {out.exitCode}); leaving them out"
-    return none
-  match LastFm.parseRecent out.stdout with
-  | .error e =>
-    IO.eprintln s!"warning: couldn't read Last.fm's response ({e}); leaving the tracks out"
-    return none
-  | .ok tracks =>
-    let now := (← Std.Time.Timestamp.now).toSecondsSinceUnixEpoch.val.toNat
-    let tracks ← LastFm.downloadCovers (outDir / "img" / "covers") tracks
-    return some (tracks, now)
-
 def build : IO Unit := do
   let ctx : Pages.Ctx := {
     blog := ← loadCollection Pages.blog
@@ -137,8 +115,8 @@ def build : IO Unit := do
     then pure (Markdown.parse (← IO.FS.readFile introPath)) else pure []
   let (recent, pinned) ← fetchGitHub envFile
   writePage (outDir / "index.html") <| Pages.home ctx {
-    intro, recent, pinned, news := ← loadNews, listening := ← fetchListening envFile
-    lastfmKey := ← Env.lookup envFile "LASTFM_API_KEY" }
+    intro, recent, pinned, news := ← loadNews
+    lastfmKey := (← Env.lookup envFile "LASTFM_API_KEY").filter (!·.isEmpty) }
   for c in ctx.collections do
     writePage (outDir / c.key / "index.html") (Pages.collectionPage ctx c)
     for p in c.entries do

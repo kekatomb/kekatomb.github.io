@@ -1,15 +1,16 @@
-// The site's own JavaScript, kept to a minimum. The build writes everything
-// into the pages; this only refreshes two parts of the home page with live
-// data, so they're current when they're read rather than when the site was
-// last built:
+// The site's own JavaScript, kept to a minimum. Two parts of the home page are
+// live, fetched when the page is read rather than when the site was built:
 //
 // - Recently played, from Last.fm (with the API key the build passes in
-//   `data-lastfm-key`; it's a read-only key, so it's fine in the page);
-// - the "Lately I've been working on…" line, from GitHub's public API.
-//
-// Each mirrors the markup and rules of its Lean counterpart (`listeningSection`
-// and `nowLine` in Site/Pages.lean, Site/LastFm.lean, Site/GitHub.lean), so the
-// stylesheet treats both alike. If a fetch fails, the build's copy stays.
+//   `data-lastfm-key`; it's a read-only key, so it's fine in the page). The
+//   build writes its panel empty and hidden; this fills it in and shows it,
+//   then checks again every 10 seconds while the page is in view, so "now
+//   playing" stays true. Without JavaScript, or if Last.fm can't be reached,
+//   it stays hidden (and once shown, a failed check leaves it as it was).
+// - The "Lately I've been working on…" line, from GitHub's public API. The
+//   build writes a copy, which this refreshes; if GitHub can't be reached,
+//   the copy stays. It mirrors `nowLine` in Site/Pages.lean and
+//   Site/GitHub.lean, so both look alike.
 
 (() => {
   "use strict";
@@ -34,6 +35,8 @@
 
   const LASTFM_USER = "kekatomb";
   const TRACKS = 5;
+  // how often to check for new tracks, while the page is in view
+  const POLL_MS = 10_000;
   // Last.fm sends this grey star instead of a cover when a track has none.
   const PLACEHOLDER = "2a96cbd8b46e442fc41c2b86b821562f";
 
@@ -70,9 +73,10 @@
         el("span", { class: "note" }, ago(now, t))));
   };
 
-  const refreshListening = async () => {
+  const fillListening = async () => {
     const key = script?.dataset.lastfmKey;
-    const list = document.querySelector(".listening .post-index-list");
+    const panel = document.querySelector(".listening");
+    const list = panel?.querySelector(".post-index-list");
     if (!key || !list) return;
     const data = await getJson(
       "https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks" +
@@ -82,9 +86,30 @@
     // a single track comes as an object, not a list
     if (!Array.isArray(tracks)) tracks = [tracks];
     const now = Math.floor(Date.now() / 1000);
-    list.replaceChildren(tracks.length
+    const fresh = tracks.length
       ? el("ul", {}, ...tracks.slice(0, TRACKS).map((t) => track(now, t)))
-      : el("p", { class: "note" }, "Nothing played recently."));
+      : el("p", { class: "note" }, "Nothing played recently.");
+    // only when something changed, so the covers don't flicker every check
+    if (list.innerHTML !== fresh.outerHTML) list.replaceChildren(fresh);
+    panel.hidden = false;
+  };
+
+  /** Fill in recently played now, then again every `POLL_MS` while the page
+   * is in view, and straight away when it comes back into view. One check at
+   * a time; a failed one leaves the panel as it was. */
+  const pollListening = () => {
+    if (!script?.dataset.lastfmKey || !document.querySelector(".listening")) return;
+    let busy = false;
+    const check = async () => {
+      if (busy || document.hidden) return;
+      busy = true;
+      try { await fillListening(); }
+      catch (err) { console.warn("couldn't update recently played:", err); }
+      finally { busy = false; }
+    };
+    check();
+    setInterval(check, POLL_MS);
+    document.addEventListener("visibilitychange", check);
   };
 
   // ---------------------------------------------------------- the now line
@@ -132,8 +157,8 @@
     if (old) old.replaceWith(line); else intro.append(line);
   };
 
-  // a failed refresh leaves the build's copy, and says why in the console
-  for (const refresh of [refreshListening, refreshNow]) {
-    refresh().catch((err) => console.warn("couldn't refresh:", err));
-  }
+  pollListening();
+  // a failed fetch leaves the line as the build wrote it, and says why in
+  // the console
+  refreshNow().catch((err) => console.warn("couldn't update the now line:", err));
 })();

@@ -39,6 +39,10 @@ body { padding: 2em; }
 
 img { max-width: 100%; height: auto; }
 
+/* hidden means hidden, even for boxes this stylesheet gives a display (the
+   browser's own rule is easily overridden) */
+[hidden] { display: none !important; }
+
 /* links are ink, told apart by their underline, which darkens on hover */
 a {
   color: inherit;
@@ -50,7 +54,7 @@ a:hover { text-decoration-color: currentColor; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 /* on dark grounds the ring is pale */
-:is(.dark, .codeblock, .social) :focus-visible { outline-color: #eee; }
+:is(.codeblock, .social) :focus-visible { outline-color: #eee; }
 
 /* ----------------------------------------------------------------- layout */
 
@@ -179,40 +183,6 @@ body > .toc { grid-area: toc; }
 
 .post-index .note { font-size: .92em; }
 .post-index-list > p { margin: 0; padding: .55em .8em; }
-
-/* ------------------------------------------------------- dark containers */
-
-/* Recently played: a little player, in charcoal like the code block. */
-.post-index.dark {
-  color: #ddd;
-  background: #222;
-  border-color: #111;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
-  text-shadow: none;
-}
-
-.post-index.dark .post-index-bar {
-  color: #eee;
-  background: linear-gradient(#444, #2c2c2c);
-  border-bottom-color: #111;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14);
-  text-shadow: 0 -1px 0 rgba(0, 0, 0, .6);
-}
-
-.post-index.dark .post-index-list {
-  background: linear-gradient(#1f1f1f, #262626);
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, .6);
-  scrollbar-color: #555 transparent;
-}
-
-.post-index.dark li:nth-child(even) { background: rgba(255, 255, 255, .03); }
-.post-index.dark li + li {
-  border-top-color: rgba(0, 0, 0, .7);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
-}
-.post-index.dark a { color: inherit; text-decoration-color: rgba(221, 221, 221, .35); }
-.post-index.dark a:hover { text-decoration-color: currentColor; }
-.post-index.dark .note { color: #999; }
 
 /* ------------------------------------------------------------- the page */
 
@@ -616,8 +586,7 @@ html { scroll-behavior: smooth; }
 .news li > div > :first-child { margin-top: 0; }
 .news li > div > :last-child { margin-bottom: 0; }
 
-/* Home: Projects (a light well) and Recently played (the dark player), side
-   by side when there's room */
+/* Home: Projects and Recently played, side by side when there's room */
 .panels {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(17em, 1fr));
@@ -636,18 +605,19 @@ html { scroll-behavior: smooth; }
   align-items: center;
 }
 
-/* the cover sits on the dark panel like a small print: rounded, a faint
-   light ring and top highlight, and a shadow. Without one it's an empty
-   dark square, so the rows still line up. */
+/* the cover sits on the well like a small print: a thin dark edge with a
+   light one inside it, and a slight lift. Without one it's an empty square
+   pressed into the well, so the rows still line up. */
 .cover {
   position: relative;
   width: 48px;
   height: 48px;
   overflow: hidden;
-  border-radius: 3px;
-  background: linear-gradient(#3a3a3a, #2a2a2a);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, .7);
+  border-radius: 2px;
+  background: linear-gradient(#ddd, #e9e9e9);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .15), 0 1px 0 #fff;
 }
+.cover:has(img) { box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
 
 .cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
@@ -657,8 +627,8 @@ html { scroll-behavior: smooth; }
   inset: 0;
   border-radius: inherit;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, .12),
-    inset 0 1px 0 rgba(255, 255, 255, .2);
+    inset 0 0 0 1px rgba(0, 0, 0, .25),
+    inset 0 0 0 2px rgba(255, 255, 255, .25);
   pointer-events: none;
 }
 
