@@ -420,6 +420,14 @@ def guestbook : String := Pages.guestbookPage sampleCtx
 #guard (homePage.splitOn ("<section class=\"side-well links\" aria-label=\"Links\">" ++
   "<div class=\"side-well-bar\">Links</div>\n<div class=\"side-well-body\"><ul><li><a href=\"/\" " ++
   "title=\"lindg.re: link here with this button\"><img src=\"/img/button-lindgre.svg\"")).length == 2
+-- the page for a missing address: absolute links only, since GitHub Pages
+-- serves it at whatever address was asked for
+def notFound : String := Pages.notFoundPage sampleCtx
+#guard (notFound.splitOn "<h1>Nothing here</h1>").length == 2
+#guard (notFound.splitOn "<div class=\"status status-failed\">").length == 2
+#guard (notFound.splitOn "href=\"/\"").length ≥ 2
+#guard ((notFound.splitOn "href=\"").drop 1).all fun s => s.startsWith "/" || s.startsWith "#" || s.startsWith "http"
+#guard ((notFound.splitOn "src=\"").drop 1).all fun s => s.startsWith "/" || s.startsWith "http"
 #guard Domo.button.startsWith "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 88 31\" width=\"88\" height=\"31\""
 
 end Site.Tests

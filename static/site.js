@@ -1,6 +1,6 @@
 // The site's own JavaScript, kept small. Every page loads it, last. Without
-// it every page still works: Domo runs on his stylesheet timers, and the
-// live widgets stay hidden or show what the build wrote.
+// it every page still works: Domo runs on his stylesheet timers, and what
+// needs JavaScript says so (a status the build writes in a <noscript>).
 //
 // - Domo, on every page: he remembers you (in this browser's localStorage,
 //   nowhere else), says something about it, watches the pointer, and sleeps
@@ -39,6 +39,21 @@
   const status = (kind, message) => el("div", { class: `status status-${kind}` },
     el("img", { src: `/img/status-${kind}.svg`, alt: "", width: "24", height: "28" }),
     el("p", {}, message));
+
+  /** A link address from elsewhere (an API), if it's a web address; none
+   * otherwise, so another site's data can never make a `javascript:` link. */
+  const webUrl = (url) => {
+    try {
+      const u = new URL(url);
+      return u.protocol === "https:" || u.protocol === "http:" ? u.href : null;
+    } catch { return null; }
+  };
+
+  /** A link to a web address from elsewhere, or just its text without one. */
+  const outLink = (url, attrs, ...children) => {
+    const href = webUrl(url);
+    return href ? el("a", { ...attrs, href }, ...children) : el("span", attrs, ...children);
+  };
 
   const getJson = async (url) => {
     const res = await fetch(url, { headers: { Accept: "application/json" } });
@@ -405,7 +420,7 @@
 
     /** A track's name (linked), artist and when, stacked. */
     const text = (now, t) => el("span", { class: "track-text" },
-      el("a", { class: "track-name", href: t.url }, t.name),
+      outLink(t.url, { class: "track-name" }, t.name),
       el("span", {}, artistOf(t)),
       el("span", { class: playing(t) ? "track-when track-now" : "note track-when" }, ago(now, t)));
 
@@ -433,7 +448,8 @@
     const update = async (withCount) => {
       const data = await lastfm("user.getrecenttracks", `&limit=${TRACKS}`);
       let fresh = data.recenttracks?.track;
-      if (!fresh) return;
+      // an answer without tracks is Last.fm saying something went wrong
+      if (!fresh) throw new Error(data.message || "no recent tracks in Last.fm's answer");
       // a single track comes as an object, not a list
       if (!Array.isArray(fresh)) fresh = [fresh];
       fresh = fresh.slice(0, TRACKS);
@@ -450,7 +466,7 @@
       }
       const latest = tracks[0];
       online("listening", latest && playing(latest)
-        ? [`${LASTFM_USER} is listening to `, el("a", { href: latest.url }, latest.name), ` by ${artistOf(latest)}.`]
+        ? [`${LASTFM_USER} is listening to `, outLink(latest.url, {}, latest.name), ` by ${artistOf(latest)}.`]
         : null);
       if (arrived || withCount) await updateCount();
     };
@@ -493,7 +509,7 @@
     : [", ", x]);
 
   const names = (repos) => joinAnd(repos.map((r) =>
-    el("a", { href: r.html_url },
+    outLink(r.html_url, {},
       r.name === `${GITHUB_USER}.github.io` ? "this site" : r.name)));
 
   const refreshNow = async () => {
@@ -563,9 +579,11 @@
     return (from > 0 ? "…" : "") + body.slice(from, to).trim() + (to < body.length ? "…" : "");
   };
 
-  /** Text with the query's words marked (`<mark>`), as nodes. */
+  /** Text with the query's words marked (`<mark>`), as nodes. Longer words
+   * first, so one that contains another is marked whole. */
   const highlight = (text, words) => {
-    const pattern = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    const pattern = [...words].sort((a, b) => b.length - a.length)
+      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
     if (!pattern) return [text];
     return text.split(new RegExp(`(${pattern})`, "gi"))
       .map((part, i) => (i % 2 ? el("mark", {}, part) : part));
@@ -629,7 +647,9 @@
   // giscus draws the comments in a frame; until it has loaded, the build's
   // "Loading the comments…" stands in. If the frame never comes (giscus is
   // blocked or down), or never finishes once you've scrolled to it (it
-  // loads lazily), that says so instead.
+  // loads lazily), that says so instead. It's loaded when the frame's `load`
+  // fires or when giscus first messages this page from it, whichever comes
+  // first (the message also covers a frame that loaded before this ran).
   const FRAME_WAIT = 15_000;
 
   const startComments = () => {
@@ -642,7 +662,10 @@
       done = true;
       wait.replaceChildren(status("failed", "Couldn't load the comments from giscus. Reload to try again."));
     };
-    const loaded = () => { if (!done) { done = true; wait.remove(); } };
+    const loaded = () => { if (!done) { done = true; clearTimeout(frameTimer); wait.remove(); } };
+    addEventListener("message", (e) => {
+      if (e.origin === "https://giscus.app" && e.data && typeof e.data === "object" && "giscus" in e.data) loaded();
+    });
 
     // the frame: when it appears, wait for it to load once it's in view
     let frameTimer = setTimeout(fail, FRAME_WAIT);

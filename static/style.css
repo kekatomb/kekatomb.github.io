@@ -96,8 +96,16 @@ body > .toc { grid-area: toc; }
      so it doesn't shift when the page scrolls */
   top: calc(2rem + 8px);
   /* never taller than the window (minus the body's padding and default 8px
-     margin): a long list of entries scrolls inside the navigation instead */
+     margin): when it doesn't fit, the column scrolls as a whole, every panel
+     at its own height (squeezing them would leave the navigation a row or
+     two). A little room each side, taken back by the margin, so the panels'
+     shadows and focus rings aren't cut off by the scrolling. */
   max-height: calc(100svh - 4rem - 16px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b5b5b5 transparent;
+  padding: 3px 4px 4px;
+  margin: -3px -4px -4px;
   display: flex;
   flex-direction: column;
   gap: 1.25em;
@@ -106,16 +114,13 @@ body > .toc { grid-area: toc; }
 
 .pane-head { flex: none; display: flex; flex-direction: column; gap: 1em; }
 
-/* the navigation takes what room is left, and no more; the wells under
-   it (search, links) keep their size */
+/* the navigation, search and links, each at its own height */
 .pane-lists {
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: none;
   display: flex;
   flex-direction: column;
   gap: 1.25em;
 }
-.side-well { flex: none; }
 
 /* the page you're on is bold, in ink, and not underlined */
 .site-nav a.current {
@@ -133,7 +138,12 @@ body > .toc { grid-area: toc; }
    recessed list whose rows alternate between two tints, divided by grooves,
    like the category tables of an old forum. */
 .site-nav, .side-well, .toc, .threads, .forum-post, .comments, .widget {
+  /* clip to the rounded corners. `clip`, not `hidden`: a hidden box can
+     still be scrolled, and jumping to a link inside one (a footnote, a
+     section) scrolls it, cutting off its top; a clipped one never scrolls.
+     (`hidden` first, for browsers without `clip`.) */
   overflow: hidden;
+  overflow: clip;
   background: var(--well);
   border: 1px solid var(--edge);
   border-radius: 3px;
@@ -247,16 +257,14 @@ body > .toc { grid-area: toc; }
 /* The navigation: Home and each collection with its count. The collection
    you're in unfolds beneath its row, listing its entries; a long list
    scrolls inside the well. */
-.site-nav { display: flex; flex-direction: column; min-height: 0; }
-.site-nav > ul {
-  min-height: 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #b5b5b5 transparent;
-}
+/* (a long list of a section's entries scrolls inside its own box, below) */
 
 /* (`.site-nav` first, to win over the plain list reset above) */
 .site-nav .site-nav-entries {
+  max-height: 16em;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b5b5b5 transparent;
   margin: .45em 0 .1em .9em;
   padding-left: .7em;
   border-left: 1px solid rgba(0, 0, 0, .12);
@@ -338,6 +346,7 @@ p.site-nav-entries { color: var(--ink-soft); }
 .codeblock {
   margin: 1em 0;
   overflow: hidden;
+  overflow: clip;
   border: 1px solid #111;
   border-radius: 3px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
@@ -862,7 +871,6 @@ html { scroll-behavior: smooth; }
   .profile > .note { grid-area: 2 / 2; }
   .profile-links { grid-area: 1 / 3 / 3 / 4; margin: 0; }
 
-  .site-nav .site-nav-entries { max-height: 14em; overflow-y: auto; }
 
   .threads { --cols: minmax(0, 1fr); }
   .threads li { row-gap: .2em; }

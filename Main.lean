@@ -11,6 +11,7 @@ import Site
 * (each collection)         → `_site/blog/index.html`, `_site/articles/index.html`
 * `content/guestbook.md`     → `_site/guestbook/index.html` (its intro, if any)
 * (every entry)             → `_site/search.json`, for the search in the left pane
+* (any missing address)     → `_site/404.html`
 * `static/**`, `CNAME`      → copied as-is
 -/
 
@@ -145,6 +146,7 @@ def build : IO Unit := do
     then pure (Markdown.parse (← IO.FS.readFile guestbookPath)) else pure []
   writePage (outDir / "guestbook" / "index.html") (Pages.guestbookPage ctx guestbookIntro)
   writePage (outDir / "search.json") (Pages.searchIndex ctx)
+  writePage (outDir / "404.html") (Pages.notFoundPage ctx)
   for (name, rows) in Domo.frames do
     writePage (outDir / "img" / s!"domo-{name}.svg") (Domo.svg rows)
   writePage (outDir / "img" / "button-lindgre.svg") Domo.button

@@ -583,6 +583,18 @@ def guestbookPage (ctx : Ctx) (intro : List Markdown.Block := []) : String :=
     [el "article" [] ([el "h1" [] [txt "Guestbook"]] ++ body ++ [comments])]
     (line := some "sign it. i'll read it.") (trail := [("Guestbook", none)])
 
+/-- The page for an address with nothing at it (`404.html`, which GitHub
+Pages serves for any missing page, at that address: so every link on it is
+absolute, as everywhere on the site). -/
+def notFoundPage (ctx : Ctx) : String :=
+  layout ctx "/404.html" (some "Not found") [
+    el "article" [] [
+      el "h1" [] [txt "Nothing here"],
+      status "failed" "There's no page at this address. It may have moved, or the link may be wrong.",
+      el "p" [] [link "/" [txt "Go to the home page"], txt ", or use the search or the navigation."]
+    ]
+  ] (line := some "nothing here. i looked.") (trail := [("Not found", none)])
+
 /-- What the search in the left pane searches (`/search.json`): every entry
 of every collection, newest first, with its title, address, summary, date,
 collection, and everything it says as plain text (`Markdown.searchText`). -/
