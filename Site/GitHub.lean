@@ -1,4 +1,5 @@
 import Lean.Data.Json
+import Site.Post
 
 /-!
 # GitHub: pinned repositories and recent work
@@ -9,6 +10,8 @@ Two things on the home page come from GitHub, fetched while the site is built
 * **Projects**: the repositories pinned on the profile. GitHub only exposes
   pins through its GraphQL API, which needs a token (`GITHUB_TOKEN`; GitHub
   Actions provides one, locally it can go in `.env`).
+* **Activity**: the contribution calendar of the last year, also from
+  GraphQL, so also only with a token.
 * **The "now" line**: the most recently pushed repositories of the profile and
   of the `kekalutions` organisation (solutions to textbooks, CTFs and the
   like), from the public REST API, which works without a token.
@@ -76,11 +79,15 @@ def parseRestRepos (src : String) : Except String (List Repo) := do
       pushedAt := (r.getObjValAs? String "pushed_at").toOption.getD "" }
   pure repos
 
+/-- Fail with GitHub's own message when a GraphQL response has errors. -/
+def checkErrors (j : Json) : Except String Unit := do
+  if let .ok errs := (j.getObjValD "errors").getArr? then
+    if !errs.isEmpty then throw s!"GitHub said: {(errs[0]!.getObjValAs? String "message").toOption.getD "error"}"
+
 /-- Pinned repositories from the GraphQL response. -/
 def parsePinned (src : String) : Except String (List Repo) := do
   let j ← Json.parse src
-  if let .ok errs := (j.getObjValD "errors").getArr? then
-    if !errs.isEmpty then throw s!"GitHub said: {(errs[0]!.getObjValAs? String "message").toOption.getD "error"}"
+  checkErrors j
   let nodes ← ((((j.getObjValD "data").getObjValD "user").getObjValD "pinnedItems").getObjValD "nodes").getArr?
   nodes.toList.mapM fun r => do
     pure {
@@ -90,6 +97,54 @@ def parsePinned (src : String) : Except String (List Repo) := do
       description := optStr r "description"
       language := optStr (r.getObjValD "primaryLanguage") "name"
       stars := (r.getObjValAs? Nat "stargazerCount").toOption.getD 0 }
+
+/-- The GraphQL request body for the contribution calendar of the last year. -/
+def contributionsQuery : String :=
+  Json.compress <| Json.mkObj [("query", Json.str <|
+    s!"\{ user(login: \"{user}\") \{ contributionsCollection \{ contributionCalendar \{ " ++
+    "totalContributions weeks { contributionDays { date contributionCount contributionLevel } } } } } }")]
+
+/-- One day of the calendar. `level` is GitHub's own shade for it, from 0
+(nothing) to 4 (the busiest quarter of days). -/
+structure Day where
+  date : Date
+  count : Nat
+  level : Nat
+deriving BEq, Repr
+
+/-- The contribution calendar: weeks (Sunday first), oldest first. The first
+and last weeks can be partial. -/
+structure Calendar where
+  total : Nat
+  weeks : List (List Day)
+deriving BEq, Repr
+
+def levelOf : String → Nat
+  | "FIRST_QUARTILE" => 1
+  | "SECOND_QUARTILE" => 2
+  | "THIRD_QUARTILE" => 3
+  | "FOURTH_QUARTILE" => 4
+  | _ => 0
+
+/-- The contribution calendar from the GraphQL response. -/
+def parseContributions (src : String) : Except String Calendar := do
+  let j ← Json.parse src
+  checkErrors j
+  let cal := (((j.getObjValD "data").getObjValD "user").getObjValD "contributionsCollection").getObjValD
+    "contributionCalendar"
+  let weeks ← (cal.getObjValD "weeks").getArr?
+  let weeks ← weeks.toList.mapM fun w => do
+    let days ← (w.getObjValD "contributionDays").getArr?
+    days.toList.mapM fun d => do
+      pure {
+        date := ← Date.parse (← d.getObjValAs? String "date")
+        count := (d.getObjValAs? Nat "contributionCount").toOption.getD 0
+        level := levelOf ((d.getObjValAs? String "contributionLevel").toOption.getD "") }
+  pure { total := (cal.getObjValAs? Nat "totalContributions").toOption.getD 0, weeks }
+
+/-- When a repository was last pushed to, as a date. -/
+def Repo.pushedDate (r : Repo) : Option Date :=
+  (Date.parse (String.ofList (r.pushedAt.toList.take 10))).toOption
 
 /-- All repositories from the lists, most recently pushed first. -/
 def byRecency (lists : List (List Repo)) : List Repo :=

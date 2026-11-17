@@ -39,7 +39,7 @@ def allowedTags : List String :=
   , "header", "nav", "main", "footer", "article", "section", "aside", "div", "span"
   , "h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "hr"
   , "a", "em", "strong", "code", "pre", "blockquote", "img"
-  , "ul", "ol", "li", "time", "small" ]
+  , "ul", "ol", "li", "dl", "dt", "dd", "time", "small", "noscript" ]
 
 def allowedAttrs : List String :=
   [ "href", "src", "alt", "title", "class", "id", "lang", "charset"
@@ -57,7 +57,7 @@ def voidTags : List String := ["br", "hr", "img", "meta", "link"]
 def blockTags : List String :=
   [ "html", "head", "body", "meta", "title", "link", "header", "nav", "main", "aside"
   , "footer", "article", "section", "div", "h1", "h2", "h3", "h4", "h5", "h6"
-  , "p", "pre", "blockquote", "ul", "ol", "li", "hr" ]
+  , "p", "pre", "blockquote", "ul", "ol", "li", "dl", "hr", "noscript" ]
 
 def escape (s : String) : String :=
   String.join <| s.toList.map fun

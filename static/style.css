@@ -1,6 +1,6 @@
 /* Light skeuomorphism in greyscale, after the forums of the 2000s: a brushed
    grey page, light recessed wells under glossy silver title bars, and charcoal only
-   for things that behave like devices (code, the social tray, the player).
+   for things that behave like devices (code).
    First styled after aspen.llia.cc. */
 
 /* ----------------------------------------------------------------- tokens */
@@ -54,25 +54,34 @@ a:hover { text-decoration-color: currentColor; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 /* on dark grounds the ring is pale */
-:is(.codeblock, .social) :focus-visible { outline-color: #eee; }
+.codeblock :focus-visible { outline-color: #eee; }
 
 /* ----------------------------------------------------------------- layout */
 
 /* The page: a centred grid. The left pane on the left, the page in the
    middle, and (on pages that have one) the table of contents on the right.
-   Both side columns stay put while the page scrolls. */
+   Both side columns stay put while the page scrolls. The home page's board
+   uses the same measures for its two columns (see `.widgets`), so its main
+   column is exactly as wide as a post, and its side column as the table of
+   contents. */
+:root {
+  --measure: 44rem;   /* the page's text, at most */
+  --rail: 14rem;      /* the right-hand column */
+  --gutter: 3rem;     /* between columns */
+}
+
 body {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
   grid-template-areas: "left main";
-  gap: 2em 3em;
+  gap: 2em var(--gutter);
   align-items: start;
   max-width: 80rem;
   margin-inline: auto;
 }
 
 body:has(> .toc) {
-  grid-template-columns: 250px minmax(0, 1fr) 14rem;
+  grid-template-columns: 250px minmax(0, 1fr) var(--rail);
   grid-template-areas: "left main toc";
 }
 
@@ -86,9 +95,9 @@ body > .toc { grid-area: toc; }
   /* exactly where it starts (the body's padding plus its default 8px margin),
      so it doesn't shift when the page scrolls */
   top: calc(2rem + 8px);
-  /* the full height of the window (minus the body's padding and default
-     8px margin), so the social row can sit at the bottom */
-  height: calc(100svh - 4rem - 16px);
+  /* never taller than the window (minus the body's padding and default 8px
+     margin): a long list of entries scrolls inside the navigation instead */
+  max-height: calc(100svh - 4rem - 16px);
   display: flex;
   flex-direction: column;
   gap: 1.25em;
@@ -97,35 +106,33 @@ body > .toc { grid-area: toc; }
 
 .pane-head { flex: none; display: flex; flex-direction: column; gap: 1em; }
 
-/* the collections share the space above the social row */
+/* the navigation takes what room is left, and no more; the wells under
+   it (search, links) keep their size */
 .pane-lists {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 1.25em;
 }
+.side-well { flex: none; }
 
-.pane-left section > :first-child { margin-top: 0; }
-.pane-left section > :last-child { margin-bottom: 0; }
-
-/* Sitemap: every top-level page. The page you're on is bold, in ink, and
-   not underlined. */
-.sitemap ul { list-style: none; margin: 0; padding: 0; }
-.sitemap li { margin: .2em 0; }
-.sitemap a.current, .post-index a.current {
+/* the page you're on is bold, in ink, and not underlined */
+.site-nav a.current {
   color: var(--ink);
   font-weight: bold;
   text-decoration: none;
 }
+/* and the section it's in is bold too */
+.site-nav > ul > li:has(.site-nav-entries .current) > a { font-weight: bold; }
 
 /* ------------------------------------------------------- light containers */
 
-/* Wells: the Blog and Articles lists, Projects, the table of contents and a
-   collection's thread list. A glossy silver title bar sits above a light,
+/* Wells: the navigation, the widgets, the table of contents
+   and a collection's thread list. A glossy silver title bar sits above a light,
    recessed list whose rows alternate between two tints, divided by grooves,
    like the category tables of an old forum. */
-.post-index, .toc, .threads, .forum-post, .comments {
+.site-nav, .side-well, .toc, .threads, .forum-post, .comments, .widget {
   overflow: hidden;
   background: var(--well);
   border: 1px solid var(--edge);
@@ -133,7 +140,7 @@ body > .toc { grid-area: toc; }
   box-shadow: 0 1px 2px rgba(0, 0, 0, .15), 0 1px 0 #ffffff80;
 }
 
-.post-index-bar, .toc-bar, .threads-head, .forum-post-bar, .comments-bar {
+.site-nav-bar, .side-well-bar, .toc-bar, .threads-head, .forum-post-bar, .comments-bar, .widget-bar {
   --label-pad: .6em;
   flex: none;
   padding-inline: .8em;
@@ -145,49 +152,124 @@ body > .toc { grid-area: toc; }
   text-shadow: var(--press);
 }
 
-:is(.post-index-bar, .forum-post-bar) a { color: inherit; text-decoration: none; }
-:is(.post-index-bar, .forum-post-bar) a:hover { text-decoration: underline; }
+:is(.forum-post-bar, .widget-bar) a { color: inherit; text-decoration: none; }
+:is(.forum-post-bar, .widget-bar) a:hover { text-decoration: underline; }
 
 /* inside the well, a faint inner shadow under the bar: the list is pressed in */
-.post-index-list, .threads > ul, .toc > ul {
+.site-nav > ul, .threads > ul, .toc > ul, .rows {
   box-shadow: inset 0 2px 3px -1px rgba(0, 0, 0, .12);
 }
 
-.post-index ul, .threads ul, .toc ul { list-style: none; margin: 0; padding: 0; }
+.site-nav ul, .threads ul, .toc ul, .rows { list-style: none; margin: 0; padding: 0; }
 
-.post-index li, .threads li, .toc li { padding: .5em .8em; line-height: 1.3; }
-:is(.post-index, .threads, .toc) li:nth-child(even) { background: var(--well-alt); }
-:is(.post-index, .threads, .toc) li + li {
+.site-nav > ul > li, .threads li, .toc li, .rows > li { padding: .5em .8em; line-height: 1.3; }
+.site-nav > ul > li:nth-child(even), :is(.threads, .toc) li:nth-child(even), .rows > li:nth-child(even) {
+  background: var(--well-alt);
+}
+.site-nav > ul > li + li, :is(.threads, .toc) li + li, .rows > li + li {
   border-top: 1px solid rgba(0, 0, 0, .08);
   box-shadow: inset 0 1px 0 #ffffffb3;
 }
 
-/* Collections in the left pane: on desktop they share the space above the
-   social row and scroll when they run out; on phones each is capped. */
-.post-index {
-  flex: 0 1 auto;
-  /* always room for the header and about one entry, however short the window */
-  min-height: 7em;
+/* The profile: the owner's postbit, as on an old forum, standing on the
+   page without a box: their name, Domo as the avatar, their post count,
+   and small buttons for their other profiles. */
+.profile > * { margin: 0; }
+.profile-name { line-height: 1.35; }
+.profile-name > strong { font-size: 14px; }
+.profile-avatar { margin: .55em 0 .45em; }
+
+.profile-links {
   display: flex;
-  flex-direction: column;
+  gap: 6px;
+  margin-top: .6em;
+  padding: 0;
+  list-style: none;
 }
 
-.post-index-list {
-  /* fill the container, even when it holds less than its minimum height */
-  flex: 1 1 auto;
+/* a square button holding just an icon (`.button` too, to win over the
+   button's own display and padding, which come later) */
+.button.icon-button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 26px;
+  padding: 0;
+}
+.icon-button img { display: block; width: 14px; height: 14px; }
+
+/* Search: a box pressed into the well, the results as rows beneath it */
+.search-box { padding: .6em .8em; }
+/* the box, and the stand-in the build writes for it until site.js puts the
+   box in its place: the same size, so nothing moves */
+:is(.search-box input, .search-stand-in) {
+  box-sizing: border-box;
+  width: 100%;
+  padding: .4em .5em;
+  color: var(--ink);
+  font: 12px var(--chrome);
+  background: #fff;
+  border: 1px solid var(--edge);
+  border-radius: 2px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .15), 0 1px 0 #fff;
+}
+.search-box input::placeholder, .search-box .search-stand-in { color: #8a8a8a; }
+.search-stand-in { display: block; line-height: normal; }
+.search-box input:focus-visible { outline-offset: 1px; }
+.search .rows { border-top: 1px solid rgba(0, 0, 0, .1); }
+/* each result: its title, where in the text it matched (when that's not
+   the title), and its section and date; the words you searched for marked,
+   pressed lightly into the page */
+.search-snippet, .search-where { display: block; }
+.search-snippet { margin: .2em 0; font-size: 12px; line-height: 1.4; color: var(--ink); }
+.search-where { font-size: 11px; }
+.search mark {
+  color: inherit;
+  background: rgba(0, 0, 0, .1);
+  border-radius: 2px;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .12);
+}
+
+/* Links: 88×31 buttons, as the personal sites of the 2000s traded them,
+   two to a row, kept sharp at any zoom */
+.links ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: .7em .8em;
+  list-style: none;
+  box-shadow: inset 0 2px 3px -1px rgba(0, 0, 0, .12);
+}
+.links a { display: block; line-height: 0; }
+.links img { width: 88px; height: 31px; image-rendering: pixelated; }
+
+/* The navigation: Home and each collection with its count. The collection
+   you're in unfolds beneath its row, listing its entries; a long list
+   scrolls inside the well. */
+.site-nav { display: flex; flex-direction: column; min-height: 0; }
+.site-nav > ul {
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #b5b5b5 transparent;
 }
 
-.post-index .note { font-size: .92em; }
-.post-index-list > p { margin: 0; padding: .55em .8em; }
+/* (`.site-nav` first, to win over the plain list reset above) */
+.site-nav .site-nav-entries {
+  margin: .45em 0 .1em .9em;
+  padding-left: .7em;
+  border-left: 1px solid rgba(0, 0, 0, .12);
+  box-shadow: -1px 0 0 #ffffffb3;
+}
+.site-nav-entries > li { padding: .3em 0; }
+.site-nav-entries .note, p.site-nav-entries { font-size: .92em; }
+p.site-nav-entries { color: var(--ink-soft); }
 
 /* ------------------------------------------------------------- the page */
 
 /* posts and pages read at 17px, with the measure set in that size */
-.pane-right { max-width: 44rem; font-size: 1.0625rem; line-height: 1.55; }
+.pane-right { max-width: var(--measure); font-size: 1.0625rem; line-height: 1.55; }
 .pane-right :is(h1, h2, h3, h4, h5, h6) { line-height: 1.2; }
 
 /* explicit sizes, so every page's headings match: browsers otherwise shrink
@@ -230,16 +312,25 @@ body > .toc { grid-area: toc; }
 .breadcrumbs li + li::before { content: "›"; margin: 0 .55em; color: var(--ink-soft); }
 .breadcrumbs span { font-weight: bold; }
 
+/* Tables: a bar naming the columns above rows. The bar's type is smaller
+   than the rows', so the columns, the gap between them and the padding at
+   each side are set once per table (--cols, --col-gap, --pad-x), in units
+   that don't follow the type size, for the bar and the rows alike: every
+   label then sits over its column. */
+.threads, .w-board { --col-gap: 1rem; --pad-x: .9rem; }
+
 /* A collection's index: a thread list. A bar names the columns; each row
    has the title (and summary) beside the date. */
+.threads { --cols: minmax(0, 1fr) 10rem; }
 .threads li, .threads-head {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 11em;
-  gap: 1em;
+  grid-template-columns: var(--cols);
+  column-gap: var(--col-gap);
+  padding-inline: var(--pad-x);
 }
-.threads li { padding: .7em .9em; }
+.threads li { padding-block: .7em; }
 .threads li > .note { font: 12px/1.9 var(--chrome); }
-.threads > p { margin: 0; padding: .7em .9em; }
+.threads > p { margin: 0; padding: .7em var(--pad-x); }
 
 /* Code block: its own dark container. A raised bar names the language, and
    the code sits below it in a recessed panel. Long lines scroll inside the
@@ -520,90 +611,200 @@ html { scroll-behavior: smooth; }
   html { scroll-behavior: auto; }
 }
 
-/* Social links: their own dark container at the bottom of the left pane,
-   holding a row of raised dark tiles with light metal icons. The tiles light
-   up a little on hover and sink in when pressed, like the light button. */
-.social {
-  /* as wide as its icons, at the bottom of the pane */
-  align-self: flex-start;
-  margin-top: auto;
-  padding: 10px;
-  background: linear-gradient(#262626, #1a1a1a);
-  border-radius: 4px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .08),
-    inset 0 0 0 1px rgba(0, 0, 0, .5),
-    0 1px 3px rgba(0, 0, 0, .35);
+/* ------------------------------------------------------------- home */
+
+/* Home: a board of widgets, across the page's middle and right-hand
+   columns. When there's room, two columns: the main one, and a narrow side
+   one for the live things. Otherwise one, with the widgets interleaved by
+   `order` (their wrappers step aside with `display: contents`). */
+.pane-right:has(> .widgets) { max-width: none; container-type: inline-size; }
+
+.widgets { display: flex; flex-direction: column; gap: 1.25rem; }
+.widgets-main, .widgets-side, .widgets-pair { display: contents; }
+
+.w-welcome   { order: 1; }
+.w-board     { order: 2; }
+.w-listening { order: 3; }
+.w-online    { order: 4; }
+.w-activity  { order: 5; }
+.w-news      { order: 6; }
+.w-projects  { order: 7; }
+
+/* two columns exactly when posts have their table of contents beside them
+   (see the 1100px breakpoint), as wide as theirs: the main one as a post's
+   text, the side one as the table of contents, at the far right */
+@media (min-width: 1101px) {
+  .widgets {
+    display: grid;
+    grid-template-columns: minmax(0, var(--measure)) var(--rail);
+    justify-content: space-between;
+    gap: 1.25rem var(--gutter);
+    align-items: start;
+  }
+  .widgets-main, .widgets-side { display: flex; flex-direction: column; gap: 1.25rem; }
+  .widgets-pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1.25rem;
+    align-items: start;
+  }
+  .widgets-pair:empty { display: none; }
+  .widget { order: 0; }
 }
 
-.social ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
+/* A widget: a bar above a body, in interface type. Its width is its own,
+   so what's inside can respond to it. */
+.widget { container-type: inline-size; }
+.widget > .widget-body { font: 13px/1.45 var(--chrome); }
+.widget > .widget-body > p.note { margin: 0; padding: .55em .8em; }
+.widget .note { font-size: .92em; }
 
-.tile {
+/* the welcome is a post, read in the page's type */
+.w-welcome > .widget-body { padding: 1rem 1.25rem 1.1rem; font: inherit; background: #fafafa; }
+.w-welcome .intro > :first-child { margin-top: 0; }
+.w-welcome .intro > :last-child { margin-bottom: 0; }
+.sticky { font-weight: normal; color: var(--ink-soft); }
+
+/* the board index: each board, its count and its latest entry, in columns
+   under the bar's labels (see Tables). Narrow, the latest goes under the
+   rest. */
+.w-board { --cols: minmax(0, 1fr) 4rem 10rem; }
+.w-board > .widget-bar, .board > li {
   display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  background: linear-gradient(#444, #2c2c2c);
-  border: 1px solid #111;
-  border-radius: 3px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, .14),
-    0 1px 2px rgba(0, 0, 0, .5);
+  grid-template-columns: var(--cols);
+  column-gap: var(--col-gap);
+  padding-inline: var(--pad-x);
+}
+.board > li { padding-block: .65em; align-items: center; }
+.board > li > div:first-child > a { font-weight: bold; }
+.board .count, .w-board > .widget-bar > :nth-child(2) { text-align: center; }
+.board .count { font-size: 12px; }
+
+@container (max-width: 28rem) {
+  /* (on the bar and rows: a container query can't restyle the container) */
+  .w-board > .widget-bar, .board > li { --cols: minmax(0, 1fr) 4rem; }
+  .board > li { row-gap: .3em; }
+  .w-board > .widget-bar > :nth-child(3) { display: none; }
+  .board .latest { grid-column: 1 / -1; }
 }
 
-/* the icon is pressed into the tile: a dark edge above it */
-.tile img {
+/* news: each item's date above its text */
+.news > li > .note { display: block; margin-bottom: .2em; }
+.news > li > div > :first-child { margin-top: 0; }
+.news > li > div > :last-child { margin-bottom: 0; }
+
+/* projects: like the thread list, the name with its language (and stars)
+   on the right, its description beneath */
+.proj { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; }
+.proj > a { font-weight: bold; }
+.proj > .note { flex: none; text-align: right; font-size: 11px; line-height: 1.35; }
+.w-projects .rows p { margin: .25em 0 0; }
+
+/* a bar that says how much, on the right (activity, recently played) */
+:is(.w-activity, .w-listening) > .widget-bar { display: flex; justify-content: space-between; gap: 1em; }
+.bar-note { font-weight: normal; color: var(--ink-soft); }
+
+/* Activity: a column per week and a square hole per day, pressed into the
+   well; a day with contributions is filled, darker the busier it was
+   (GitHub's own four levels). On narrow boards only the last half year. */
+.w-activity > .widget-body {
+  padding: 12px;
+  box-shadow: inset 0 2px 3px -1px rgba(0, 0, 0, .12);
+}
+
+/* one grid of seven rows for every day, filled a column (a week) at a
+   time: the weeks step aside, so a short last week's holes are the same
+   size as the rest */
+.pegboard {
+  display: grid;
+  grid-template-rows: repeat(7, auto);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 3px;
+}
+
+.week { display: contents; }
+
+.peg {
   display: block;
-  width: 16px;
-  height: 16px;
-  filter: drop-shadow(0 -1px 0 rgba(0, 0, 0, .7));
+  aspect-ratio: 1;
+  border-radius: 1px;
+  background: #dcdcdc;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .22), 0 1px 0 #fff;
+}
+.peg.pad { visibility: hidden; }
+.peg.l1 { background: #b4b4b4; }
+.peg.l2 { background: #8c8c8c; }
+.peg.l3 { background: #5f5f5f; }
+.peg.l4 { background: #333; }
+
+@container (max-width: 30rem) {
+  .week:nth-last-child(n + 27) { display: none; }
 }
 
-.tile:hover { background: linear-gradient(#4e4e4e, #343434); }
-
-.tile:active {
-  background: linear-gradient(#262626, #303030);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .6);
-}
-
-/* Home: news, newest first, each item's date in a column beside its text. */
-.news ul { list-style: none; margin: 0; padding: 0; }
-.news li {
+/* Recently played: the latest track large, its cover beside its name,
+   artist and when, on the light body like a post; the ones before it as
+   rows beneath, under a groove. */
+.np {
   display: grid;
-  grid-template-columns: 11em minmax(0, 1fr);
-  gap: 1em;
-  padding: .6em 0;
-}
-.news li + li { border-top: 1px solid rgba(0, 0, 0, .12); box-shadow: inset 0 1px 0 #ffffffbf; }
-.news li > .note { padding-top: .25em; font: 12px/1.6 var(--chrome); }
-.news li > div > :first-child { margin-top: 0; }
-.news li > div > :last-child { margin-bottom: 0; }
-
-/* Home: Projects and Recently played, side by side when there's room */
-.panels {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17em, 1fr));
-  gap: 1.5em;
-  align-items: start;
-  margin-top: 2em;
-}
-
-.panel { font: 13px/1.45 var(--chrome); }
-
-/* each track: its album cover beside the title, artist and time */
-.listening li {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
-  gap: .75em;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: .8em;
   align-items: center;
+  padding: .75em .8em;
+  background: #fafafa;
 }
+.np + .rows {
+  border-top: 1px solid rgba(0, 0, 0, .1);
+}
+.w-listening .rows > li {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: .65em;
+  align-items: center;
+  padding: .45em .8em;
+}
+.track-text { display: grid; min-width: 0; line-height: 1.35; }
+.track-text > * { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.track-name { font-weight: bold; }
+.np .track-name { font-size: 14px; }
+.track-now { font-weight: bold; }
+
+/* Before the tracks arrive: a skeleton, the size of the real thing, so
+   nothing moves when they do. Empty covers, and a groove pressed into the
+   well for each line of text, slowly fading in and out. The tracks then
+   fade in over it. Without JavaScript nothing would fill it, so it's
+   hidden. */
+.bone { display: block; height: 1.35em; }
+.np .bone:first-child { height: calc(14px * 1.35); }
+/* the last line (when it was played) is a note, set a little smaller */
+.bone:last-child { height: calc(.92em * 1.35); }
+.bone::before {
+  content: "";
+  display: block;
+  width: var(--w);
+  height: .7em;
+  margin-top: .33em;
+  background: #e0e0e0;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, .12), 0 1px 0 #fff;
+}
+.bone.w1 { --w: 70%; }
+.bone.w2 { --w: 50%; }
+.bone.w3 { --w: 35%; }
+.np .bone:first-child::before { height: 9px; margin-top: 5px; }
+
+.skeleton { animation: skeleton-pulse 1.4s ease-in-out infinite alternate; }
+@keyframes skeleton-pulse { from { opacity: 1; } to { opacity: .55; } }
+
+.w-listening .widget-body > :not(.skeleton, noscript) { animation: tracks-in .35s ease-out; }
+@keyframes tracks-in { from { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton, .w-listening .widget-body > * { animation: none; }
+}
+
+/* the owner's time, the last line of who's online */
+.online-time b { color: var(--ink); }
 
 /* the cover sits on the well like a small print: a thin dark edge with a
    light one inside it, and a slight lift. Without one it's an empty square
@@ -619,6 +820,9 @@ html { scroll-behavior: smooth; }
 }
 .cover:has(img) { box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
 
+.cover.large { width: 64px; height: 64px; }
+.w-listening .rows .cover { width: 32px; height: 32px; }
+
 .cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 .cover::after {
@@ -632,35 +836,82 @@ html { scroll-behavior: smooth; }
   pointer-events: none;
 }
 
-/* Phones: one column. The left pane's head (Domo and the sitemap) goes
-   above the page, its lists (collections and social links) below it. */
+/* Phones: one column. The profile goes above the page, as one row (name,
+   Domo, posts, buttons); the breadcrumbs say where you are and the
+   navigation goes below the page. */
 @media (max-width: 640px) {
   body { padding: 1rem; }
   body, body:has(> .toc) {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "head" "main" "lists";
+    row-gap: 1rem;
   }
   body:has(> .toc) { grid-template-areas: "head" "toc" "main" "lists"; }
   .pane-left { display: contents; }
   .pane-head { grid-area: head; font: 13px/1.45 var(--chrome); }
   .pane-lists { grid-area: lists; font: 13px/1.45 var(--chrome); }
-  .post-index-list { max-height: 14em; }
+  .profile {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: .75em;
+  }
+  /* room on Domo's right for his "zzz" */
+  .profile-avatar { grid-area: 1 / 1 / 3 / 2; margin: 0 24px 0 0; }
+  .profile-name { grid-area: 1 / 2; }
+  .profile > .note { grid-area: 2 / 2; }
+  .profile-links { grid-area: 1 / 3 / 3 / 4; margin: 0; }
 
-  .news li { grid-template-columns: minmax(0, 1fr); gap: .2em; }
-  .threads li, .threads-head { grid-template-columns: minmax(0, 1fr); gap: .2em; }
+  .site-nav .site-nav-entries { max-height: 14em; overflow-y: auto; }
+
+  .threads { --cols: minmax(0, 1fr); }
+  .threads li { row-gap: .2em; }
   .threads-head span + span { display: none; }
 
 }
 
 /* ------------------------------------------------------------ components */
 
+/* Status: Domo as a small pixel icon beside a message, in place of
+   something that can't be shown: knocked out when it failed to load, asleep
+   when it needs JavaScript, which is off. The no-JavaScript one is in a
+   <noscript>; what it stands in for has the class `script-only`, hidden
+   then. */
+.status {
+  display: flex;
+  align-items: center;
+  gap: .8em;
+  padding: .75em .8em;
+  font: 12px/1.45 var(--chrome);
+  color: var(--ink-soft);
+}
+.status img { flex: none; display: block; width: 24px; height: 28px; image-rendering: pixelated; }
+.status p { margin: 0; }
+.giscus .status, .rows .status { padding: 0; }
+/* a status in place of a widget's content takes the content's padding, not
+   both (the activity's pegboard has its own) */
+.widget-body:has(> .status) { padding: 0; }
+/* under a list (who's online), a groove first, like another row */
+.rows + noscript > .status {
+  border-top: 1px solid rgba(0, 0, 0, .08);
+  box-shadow: inset 0 1px 0 #ffffffb3;
+}
+
+/* loading: Domo waits, the message slowly fading in and out */
+.status-loading { animation: skeleton-pulse 1.4s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion: reduce) { .status-loading { animation: none; } }
+
+@media (scripting: none) {
+  .script-only { display: none !important; }
+}
+
 /* Centred labels. Components whose text sits inside a visible edge list
    themselves here. `text-box` trims each line box to the capitals and the
    baseline, so the label is centred exactly, whatever the font's metrics.
    Browsers without it fall back to `line-height: 1`. Components set their
    padding with --label-pad and get the same height either way. */
-.button, .speech, .codeblock-bar, .post-index-bar, .toc-bar, .threads-head, .forum-post-bar,
-.comments-bar {
+.button, .speech, .codeblock-bar, .site-nav-bar, .side-well-bar, .toc-bar, .threads-head, .forum-post-bar,
+.comments-bar, .widget-bar {
   --pad-y: var(--label-pad, .6em);
   line-height: 1;
   padding-top: var(--pad-y);
@@ -668,8 +919,8 @@ html { scroll-behavior: smooth; }
 }
 
 @supports (text-box: trim-both cap alphabetic) {
-  .button, .speech, .codeblock-bar, .post-index-bar, .toc-bar, .threads-head, .forum-post-bar,
-.comments-bar {
+  .button, .speech, .codeblock-bar, .site-nav-bar, .side-well-bar, .toc-bar, .threads-head, .forum-post-bar,
+  .comments-bar, .widget-bar {
     text-box: trim-both cap alphabetic;
     /* add back the height the trim removed */
     --pad-y: calc(var(--label-pad, .6em) + (1em - 1cap) / 2);
@@ -794,11 +1045,36 @@ html { scroll-behavior: smooth; }
   50% { opacity: .35; }
 }
 
+/* With JavaScript, site.js drives him (adding .scripted): no timers, but
+   `data-state` (talk, awake or asleep) and `data-look`, where his eyes point
+   while he's awake. His bubble shows while it's `.on`. Hover and press
+   below still win. */
+.domo .right, .domo .down, .domo .downright { opacity: 0; }
+
+.domo.scripted img, .domo.scripted .zzz, .domo.scripted .speech { animation: none; }
+.domo.scripted .open { opacity: 1; }
+.domo.scripted .speech.on { opacity: 1; }
+
+.domo.scripted[data-state="talk"]:not(:hover) .shut { animation: domo-flap .4s step-end infinite; }
+.domo.scripted[data-state="talk"]:not(:hover) .open { animation: domo-unflap .4s step-end infinite; }
+
+.domo.scripted[data-state="awake"]:is([data-look="right"], [data-look="down"], [data-look="downright"]):not(:hover) .open {
+  opacity: 0;
+}
+.domo.scripted[data-state="awake"][data-look="right"]:not(:hover) .right,
+.domo.scripted[data-state="awake"][data-look="down"]:not(:hover) .down,
+.domo.scripted[data-state="awake"][data-look="downright"]:not(:hover) .downright { opacity: 1; }
+
+.domo.scripted[data-state="asleep"]:not(:hover) .open { opacity: 0; }
+.domo.scripted[data-state="asleep"]:not(:hover) .sleep { opacity: 1; }
+.domo.scripted[data-state="asleep"]:not(:hover) .zzz { animation: domo-zzz 3s step-end infinite; }
+
 /* hover wakes him: open wide, no sleep, no zzz */
 .domo:hover .open,
 .domo:hover .shut,
 .domo:hover .sleep { animation: none; opacity: 0; }
 .domo:hover .wide { opacity: 1; }
+.domo:hover :is(.right, .down, .downright) { opacity: 0; }
 .domo:hover .zzz { animation: none; opacity: 0; }
 
 .domo:active .wide { opacity: 0; }
@@ -817,6 +1093,7 @@ html { scroll-behavior: smooth; }
   font: 12px/1 var(--chrome);
   opacity: 0;
   pointer-events: none;
+  z-index: 2;
   background: linear-gradient(#fff, #e9e9e9);
   border: 1px solid #aaa;
   border-radius: 4px;
@@ -849,4 +1126,6 @@ html { scroll-behavior: smooth; }
   .domo .shut { animation: none; }
   .domo .open { animation: domo-hide 0s var(--sleep-after) forwards; }
   .zzz { animation: domo-show 0s var(--sleep-after) forwards; }
+  .domo.scripted .shut, .domo.scripted .open { animation: none !important; }
+  .domo.scripted[data-state="asleep"]:not(:hover) .zzz { animation: none; opacity: .6; }
 }

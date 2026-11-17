@@ -5,10 +5,12 @@ import Site
 
 `lake exe site` reads `content/` and writes the finished site to `_site/`:
 
-* `content/intro.md`, `content/news/<date>.md`, GitHub, Last.fm → `_site/index.html`
+* `content/intro.md`, `content/news/<date>.md`, GitHub → `_site/index.html`
 * `content/posts/<slug>.md` → `_site/blog/<slug>/index.html`
 * `content/articles/<slug>.md` → `_site/articles/<slug>/index.html`
 * (each collection)         → `_site/blog/index.html`, `_site/articles/index.html`
+* `content/guestbook.md`     → `_site/guestbook/index.html` (its intro, if any)
+* (every entry)             → `_site/search.json`, for the search in the left pane
 * `static/**`, `CNAME`      → copied as-is
 -/
 
@@ -64,15 +66,38 @@ when it fails. -/
 def curl (what : String) (args : Array String) : IO (Option String) := do
   let out ← IO.Process.output { cmd := "curl", args := #["-sf", "--max-time", "20"] ++ args }
   if out.exitCode == 0 then return some out.stdout
-  IO.eprintln s!"warning: couldn't fetch {what} (curl exit {out.exitCode}); leaving it out"
+  IO.eprintln s!"warning: couldn't fetch {what} (curl exit {out.exitCode})"
   return none
 
-/-- The GitHub repositories, most recently updated first (for the "now" line), and the
-pinned ones (for Projects). Recent repos come from the public REST API, which
-works without a token. Pins need GraphQL, which needs `GITHUB_TOKEN`; without
-it they're `none`. Any failure just leaves that part out. -/
-def fetchGitHub (envFile : List (String × String)) :
-    IO (List GitHub.Repo × Option (List GitHub.Repo)) := do
+/-- What the home page shows from GitHub. -/
+structure GitHubData where
+  /-- Most recently updated first (for the "now" line). -/
+  recent : List GitHub.Repo := []
+  /-- The pinned repositories (for Projects). -/
+  pinned : Pages.Fetched (List GitHub.Repo) := .skipped
+  /-- The contribution calendar (for Activity). -/
+  contributions : Pages.Fetched GitHub.Calendar := .skipped
+
+/-- A GraphQL query to GitHub, with the token, read with `parse`: skipped
+without a token, failed (with a warning naming `what`) when the request or
+the reading fails. -/
+def graphql {α : Type} (token : Option String) (headers : Array String) (what query : String)
+    (parse : String → Except String α) : IO (Pages.Fetched α) := do
+  let some _ := token | return .skipped
+  let some body ← curl what (headers ++ #["-X", "POST", "-d", query, GitHub.graphqlUrl])
+    | return .failed
+  match parse body with
+  | .ok a => return .ok a
+  | .error e =>
+    IO.eprintln s!"warning: couldn't read {what} ({e}); the page will say so"
+    return .failed
+
+/-- What the home page shows from GitHub. Recent repos come from the public
+REST API, which works without a token; if that fails the "now" line is left
+out (and `site.js` tries again in the browser). Pins and the contribution
+calendar need GraphQL, which needs `GITHUB_TOKEN`: without it they're
+skipped; if fetching them fails, the page says so. -/
+def fetchGitHub (envFile : List (String × String)) : IO GitHubData := do
   let token ← Env.lookup envFile "GITHUB_TOKEN"
   let auth := match token with
     | some t => #["-H", s!"Authorization: Bearer {t}"]
@@ -84,17 +109,10 @@ def fetchGitHub (envFile : List (String × String)) :
       match GitHub.parseRestRepos body with
       | .ok repos => lists := lists ++ [repos]
       | .error e => IO.eprintln s!"warning: couldn't read GitHub's repositories ({e}); leaving them out"
-  let pinned ← match token with
-    | none => pure none
-    | some _ => do
-      let some body ← curl "pinned GitHub repositories"
-        (headers ++ #["-X", "POST", "-d", GitHub.pinnedQuery, GitHub.graphqlUrl]) | pure none
-      match GitHub.parsePinned body with
-      | .ok repos => pure (some repos)
-      | .error e =>
-        IO.eprintln s!"warning: couldn't read GitHub's pinned repositories ({e}); leaving them out"
-        pure none
-  return (GitHub.byRecency lists, pinned)
+  let pinned ← graphql token headers "pinned GitHub repositories" GitHub.pinnedQuery GitHub.parsePinned
+  let contributions ← graphql token headers "GitHub contributions" GitHub.contributionsQuery
+    GitHub.parseContributions
+  return { recent := GitHub.byRecency lists, pinned, contributions }
 
 /-- Variables from the local `.env` file, if there is one. -/
 def loadEnvFile : IO (List (String × String)) := do
@@ -113,16 +131,25 @@ def build : IO Unit := do
   let introPath := contentDir / "intro.md"
   let intro ← if ← introPath.pathExists
     then pure (Markdown.parse (← IO.FS.readFile introPath)) else pure []
-  let (recent, pinned) ← fetchGitHub envFile
+  let gh ← fetchGitHub envFile
   writePage (outDir / "index.html") <| Pages.home ctx {
-    intro, recent, pinned, news := ← loadNews
+    intro, recent := gh.recent, pinned := gh.pinned, contributions := gh.contributions
+    news := ← loadNews
     lastfmKey := (← Env.lookup envFile "LASTFM_API_KEY").filter (!·.isEmpty) }
   for c in ctx.collections do
     writePage (outDir / c.key / "index.html") (Pages.collectionPage ctx c)
     for p in c.entries do
       writePage (outDir / c.key / p.slug / "index.html") (Pages.post ctx p)
+  let guestbookPath := contentDir / "guestbook.md"
+  let guestbookIntro ← if ← guestbookPath.pathExists
+    then pure (Markdown.parse (← IO.FS.readFile guestbookPath)) else pure []
+  writePage (outDir / "guestbook" / "index.html") (Pages.guestbookPage ctx guestbookIntro)
+  writePage (outDir / "search.json") (Pages.searchIndex ctx)
   for (name, rows) in Domo.frames do
     writePage (outDir / "img" / s!"domo-{name}.svg") (Domo.svg rows)
+  writePage (outDir / "img" / "button-lindgre.svg") Domo.button
+  for (name, rows) in Domo.statusIcons do
+    writePage (outDir / "img" / s!"status-{name}.svg") (Domo.svg rows Domo.statusScale)
 
 
   if ← staticDir.pathExists then

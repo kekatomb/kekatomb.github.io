@@ -57,6 +57,13 @@ def daysIn (year month : Nat) : Nat :=
   | 4 | 6 | 9 | 11 => 30
   | _ => 31
 
+/-- The day of the week, from 0 (Sunday) to 6 (Saturday), by Sakamoto's
+method. -/
+def weekday (d : Date) : Nat :=
+  let t := [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4]
+  let y := if d.month < 3 then d.year - 1 else d.year
+  (y + y / 4 - y / 100 + y / 400 + t[d.month - 1]! + d.day) % 7
+
 def parse (s : String) : Except String Date :=
   match s.splitOn "-" with
   | [y, m, d] =>

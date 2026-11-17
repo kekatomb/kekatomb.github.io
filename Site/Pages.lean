@@ -3,20 +3,30 @@ import Site.Post
 import Site.Markdown.ToHtml
 import Site.LastFm
 import Site.GitHub
+import Site.Domo
 
 /-! # Page templates
 
 Every page has two panes:
 
-* **Left** (always visible), in two parts:
-  1. the head (`.pane-head`): the pixel Domo, the "be back later" note and a
-     sitemap of the top-level pages;
-  2. the lists (`.pane-lists`): a container for each collection (Blog,
-     Articles), a header bar linking to its index above a scrollable list of
-     its entries with their dates (the current page is marked), and a dark
-     container with social link icons, pinned to the bottom.
-  On phones the head goes above the page and the lists below it.
-* **Right**: breadcrumbs (on every page but home), then the page's own content.
+* **Left** (always visible), in two parts, like the column beside a post on
+  an old forum:
+  1. the head (`.pane-head`): the owner's profile, as a forum's "postbit":
+     their name, Domo as the avatar, how many posts, and buttons for their
+     other profiles;
+  2. the lists (`.pane-lists`): the site's navigation, a well with Home,
+     each collection and the guestbook. The collection you're in unfolds to
+     list its entries with their dates (the current page is marked). Below
+     it, a search box (filled in by `site.js`) and a wall of 88×31 buttons.
+  On phones the profile goes above the page and the lists below it.
+* **Right**: breadcrumbs (on every page but home), then the page's own
+  content. They overlap the navigation, but sit where the eye already is,
+  for going up a level.
+  The home page's is a board of widgets (see `home`).
+
+Every page loads the site's own script, `static/site.js`, last: Domo's
+dialogue, everywhere, and the live parts of the home page (recently played,
+and the time in Who's online).
 
 Styling lives in `static/style.css`. -/
 
@@ -24,6 +34,16 @@ namespace Site.Pages
 open Site Html
 
 def siteName : String := "lindg.re"
+
+/-- The owner's name, at the top of the profile in the left pane, and the
+line under it, in lighter text. -/
+def ownerName : String := "lindgren"
+def ownerNote : String := "Don't bet your life on it."
+
+/-- The owner's time zone: for the clock on the home page, and for Domo, who
+sleeps when it's night there. `site.js` reads it from the script tag. -/
+def ownerTimeZone : String := "Europe/Stockholm"
+
 
 def postUrl (p : Post) : String := s!"/{p.kind}/{p.slug}/"
 
@@ -36,12 +56,16 @@ structure Collection where
   dir : String
   /-- Shown when the collection is empty. -/
   empty : String
+  /-- What it holds, under its name on the home page's board. -/
+  blurb : String := ""
   entries : List Post := []
 
 def blog : Collection :=
-  { key := "blog", title := "Blog", dir := "posts", empty := "No posts yet." }
+  { key := "blog", title := "Blog", dir := "posts", empty := "No posts yet.",
+    blurb := "Personal thoughts." }
 def articles : Collection :=
-  { key := "articles", title := "Articles", dir := "articles", empty := "No articles yet." }
+  { key := "articles", title := "Articles", dir := "articles", empty := "No articles yet.",
+    blurb := "Engineering and research write-ups." }
 
 /-- Site-wide data every page needs: the collections, with their entries. -/
 structure Ctx where
@@ -50,14 +74,30 @@ structure Ctx where
 
 def Ctx.collections (ctx : Ctx) : List Collection := [ctx.blog, ctx.articles]
 
+/-- Something the build fetches from elsewhere (GitHub): not asked for (no
+key to ask with), fetched, or failed. A part of the page that's skipped is
+left out; one that failed says so (see `status`). -/
+inductive Fetched (α : Type) where
+  | skipped
+  | failed
+  | ok (value : α)
+  deriving Inhabited
+
+/-- A parse result as fetched: an error is a failure. -/
+def Fetched.ofExcept {ε α : Type} : Except ε α → Fetched α
+  | .ok a => .ok a
+  | .error _ => .failed
+
 /-- The pixel Domo in the top-left: his frames stacked, for the stylesheet to
 switch between (see `Site/Domo.lean` and `.domo` in style.css). Only the first
 frame carries alt text, so screen readers announce him once.
 
 `line` is what he says when the page loads, in a speech bubble; the "zzz" is
-for when he falls asleep. Both are hidden from screen readers. -/
+for when he falls asleep. Both are hidden from screen readers. With
+JavaScript, `site.js` takes him over: what he says, when he sleeps, and the
+frames where his eyes follow the pointer (`right`, `down`, `downright`). -/
 def domo (line : Option String) : Html :=
-  let frames := ["open", "shut", "wide", "sleep"].map fun name =>
+  let frames := (Domo.frames.map (·.1)).map fun name =>
     el "img" [("src", s!"/img/domo-{name}.svg"), ("class", name),
       ("alt", if name == "open" then "lindgren" else ""), ("width", "36"), ("height", "42")]
   let speech := match line with
@@ -66,71 +106,119 @@ def domo (line : Option String) : Html :=
   el "span" [("class", "domo")] <|
     frames ++ speech ++ [el "span" [("class", "zzz"), ("aria-hidden", "true")] [txt "zzz"]]
 
-/-- Social links in the left pane's dark container, as `(label, href, icon)`.
-The icon is an SVG in `static/icons/`; the label is its alt text and tooltip. -/
+/-- The owner's other profiles, as `(label, href, icon)`: buttons in the
+profile. The icon is a dark SVG in `static/icons/`, beside the label. -/
 def socialLinks : List (String × String × String) :=
-  [ ("GitHub", "https://github.com/kekatomb", "/icons/github.svg")
-  , ("LinkedIn", "https://www.linkedin.com/in/philip-lindgren/", "/icons/linkedin.svg") ]
+  [ ("GitHub", "https://github.com/kekatomb", "/icons/github-dark.svg")
+  , ("LinkedIn", "https://www.linkedin.com/in/philip-lindgren/", "/icons/linkedin-dark.svg") ]
 
-/-- The sitemap's top-level pages, as `(label, href)`. The blog and articles
-have their own containers below it (`collectionIndex`). -/
-def sitemapPages : List (String × String) :=
-  [("Home", "/")]
-
-/-- One sitemap link; the page we're on (`here`) is marked as current. -/
+/-- A link in the navigation; the page we're on (`here`) is marked as current. -/
 def sitemapLink (here label href : String) : Html :=
   if href == here then
     el "a" [("href", href), ("class", "current"), ("aria-current", "page")] [txt label]
   else link href [txt label]
 
-/-- The sitemap. `here` is the current page's path. -/
-def sitemap (here : String) : Html :=
-  el "nav" [("class", "sitemap")] [
-    el "ul" [] <| sitemapPages.map fun (label, href) => el "li" [] [sitemapLink here label href]
-  ]
-
 def dateTag (d : Date) : Html :=
   el "time" [("datetime", d.iso)] [txt d.long]
 
-/-- A collection's container in the left pane: a header bar linking to its
-index page, above a scrollable list of every entry, newest first, with its
-date. The page at `here` is marked as current. -/
-def collectionIndex (here : String) (c : Collection) : Html :=
-  el "nav" [("class", "post-index"), ("aria-label", c.title)] [
-    el "div" [("class", "post-index-bar")] [sitemapLink here c.title s!"/{c.key}/"],
-    el "div" [("class", "post-index-list")] [
-      if c.entries.isEmpty then el "p" [("class", "note")] [txt c.empty]
-      else el "ul" [] <| c.entries.map fun p =>
+/-- The owner's profile, as the column beside a post on an old forum (its
+"postbit"): their name with a line under it, Domo as the avatar, how many
+posts they've written, and buttons for their other profiles. `line` is what
+Domo says on this page. -/
+def profile (ctx : Ctx) (line : Option String) : Html :=
+  let posts := (ctx.collections.map (·.entries.length)).foldl (· + ·) 0
+  el "section" [("class", "profile"), ("aria-label", "About the owner")] [
+    el "p" [("class", "profile-name")] [el "strong" [] [txt ownerName], el "br",
+      el "span" [("class", "note")] [txt ownerNote]],
+    el "p" [("class", "profile-avatar")] [domo line],
+    el "p" [("class", "note")] [txt s!"Posts: {posts}"],
+    el "ul" [("class", "profile-links")] <| socialLinks.map fun (label, href, icon) =>
+      el "li" [] [
+        el "a" [("href", href), ("title", label), ("class", "button icon-button")] [
+          el "img" [("src", icon), ("alt", label), ("width", "14"), ("height", "14")]
+        ]
+      ]
+  ]
+
+/-- The site's navigation, for the page at `here`: Home, each collection,
+then the guestbook. The collection `here` is in unfolds to list every entry,
+newest first, with its date; the others stay folded (on the home page, all
+of them: its board lists them). -/
+def siteNav (ctx : Ctx) (here : String) : Html :=
+  let entries (c : Collection) : List Html :=
+    if !here.startsWith s!"/{c.key}/" then [] else [
+      if c.entries.isEmpty then el "p" [("class", "note site-nav-entries")] [txt c.empty]
+      else el "ul" [("class", "site-nav-entries")] <| c.entries.map fun p =>
         el "li" [] [sitemapLink here p.title (postUrl p), el "br",
           el "span" [("class", "note")] [dateTag p.date]]
     ]
+  el "nav" [("class", "site-nav"), ("aria-label", "Site")] [
+    el "div" [("class", "site-nav-bar")] [txt "Navigation"],
+    el "ul" [] <|
+      el "li" [] [sitemapLink here "Home" "/"] ::
+      ctx.collections.map (fun c =>
+        el "li" [] ([sitemapLink here c.title s!"/{c.key}/"] ++ entries c)) ++
+      [el "li" [] [sitemapLink here "Guestbook" "/guestbook/"]]
+  ]
+
+/-- A status: Domo as a small pixel icon (see `Domo.statusIcons`) beside a
+message, in place of something that can't be shown (yet). `kind` is
+`loading` (it's on its way), `failed` (it didn't load) or `noscript` (it
+needs JavaScript, which is off).
+`site.js` builds the same markup (its `status`) for what fails in the
+browser. -/
+def status (kind : String) (message : String) : Html :=
+  el "div" [("class", s!"status status-{kind}")] [
+    el "img" [("src", s!"/img/status-{kind}.svg"), ("alt", ""),
+      ("width", toString (12 * Domo.statusScale)), ("height", toString (14 * Domo.statusScale))],
+    el "p" [] [txt message]
+  ]
+
+/-- A status for when JavaScript is off, which only then shows (it's in a
+`<noscript>`). Put it beside what needs JavaScript, and give that the class
+`script-only` so the stylesheet hides it then. -/
+def noscriptStatus (message : String) : Html :=
+  el "noscript" [] [status "noscript" message]
+
+/-- A small well in the left pane, under the navigation: a bar above a body. -/
+def sideWell (key title : String) (body : List Html) (hidden := false) : Html :=
+  el "section" ([("class", s!"side-well {key}"), ("aria-label", title)] ++
+      (if hidden then [("hidden", "")] else [])) [
+    el "div" [("class", "side-well-bar")] [txt title],
+    el "div" [("class", "side-well-body")] body
+  ]
+
+/-- Search. The build writes a stand-in for the box, its size, so nothing
+moves when `site.js` puts the real one in its place; it then searches
+`/search.json` (see `searchIndex`) as you type. Without JavaScript there's
+nothing to search with, so a status says so instead. -/
+def searchWidget : Html := sideWell "search" "Search" [
+    el "div" [("class", "search-box script-only"), ("aria-hidden", "true")] [
+      el "span" [("class", "search-stand-in")] [txt "Search posts…"]],
+    noscriptStatus "Turn on JavaScript to search the posts."
+  ]
+
+/-- Buttons for the links wall, as `(label, href, image)`: 88×31 images, the
+way personal sites linked to each other. This site's own comes first, for
+others to copy (`Domo.button`, written to `/img/button-lindgre.svg`). Put
+other sites' buttons in `static/buttons/` and list them here. -/
+def linkButtons : List (String × String × String) :=
+  [ (s!"{siteName}: link here with this button", "/", "/img/button-lindgre.svg") ]
+
+/-- The links wall: each button as an 88×31 image link. -/
+def linksWidget : Html :=
+  sideWell "links" "Links" [
+    el "ul" [] <| linkButtons.map fun (label, href, img) =>
+      el "li" [] [el "a" [("href", href), ("title", label)] [
+        el "img" [("src", img), ("alt", label), ("width", "88"), ("height", "31")]
+      ]]
   ]
 
 /-- The left pane, for the page at `here`. `line` is what Domo says there. -/
 def leftPane (ctx : Ctx) (here : String) (line : Option String) : Html :=
   el "aside" [("class", "pane-left")] [
-    el "div" [("class", "pane-head")] [
-      el "section" [("class", "intro")] [
-        el "p" [] [domo line],
-        el "p" [] [
-          txt "My site will be back, sometime.", el "br",
-          el "span" [("class", "note")] [txt "Don't bet your life on it."]
-        ]
-      ],
-      el "section" [("class", "context")] [sitemap here]
-    ],
-    el "div" [("class", "pane-lists")] [
-      collectionIndex here ctx.blog,
-      collectionIndex here ctx.articles,
-      el "section" [("class", "social")] [
-        el "ul" [] <| socialLinks.map fun (label, href, icon) =>
-          el "li" [] [
-            el "a" [("href", href), ("title", label), ("class", "tile")] [
-              el "img" [("src", icon), ("alt", label), ("width", "16"), ("height", "16")]
-            ]
-          ]
-      ]
-    ]
+    el "div" [("class", "pane-head")] [profile ctx line],
+    el "div" [("class", "pane-lists")] [siteNav ctx here, searchWidget, linksWidget]
   ]
 
 /-- Breadcrumbs above the page: the site's name (linking home), then each
@@ -147,11 +235,13 @@ def breadcrumbs (trail : List (String × Option String)) : List Html :=
 
 /-- The full HTML document for the page at path `here`: the left pane, then
 `body` in the right pane under the breadcrumbs for `trail`, then `side` (the
-table of contents, if any) in a third column. `line` is what Domo says on this
-page, if anything. -/
+table of contents, if any) in a third column, then the site's script, with
+`scriptData` (and the owner's time zone) as its settings. `line` is what Domo
+says on this page, if anything. -/
 def layout (ctx : Ctx) (here : String) (pageTitle : Option String)
     (body : List Html) (line : Option String := none) (side : List Html := [])
-    (trail : List (String × Option String) := []) : String :=
+    (trail : List (String × Option String) := [])
+    (scriptData : List (String × String) := []) : String :=
   let t := match pageTitle with
     | some pt => s!"{pt} — {siteName}"
     | none => siteName
@@ -165,7 +255,7 @@ def layout (ctx : Ctx) (here : String) (pageTitle : Option String)
     el "body" [] ([
       leftPane ctx here line,
       el "main" [("class", "pane-right")] (breadcrumbs trail ++ body)
-    ] ++ side)
+    ] ++ side ++ [.script "/site.js" (scriptData ++ [("data-owner-tz", ownerTimeZone)])])
   ]
 
 /-- A collection's entries as a forum's thread list: a header row naming the
@@ -194,35 +284,22 @@ def borderedImage (src alt : String) (size : Option (Nat × Nat) := none) : Html
     | none => []
   el "p" [] [el "span" [("class", "bordered")] [el "img" ([("src", src), ("alt", alt)] ++ dims)]]
 
-/-- One news item: its date and its Markdown body. -/
-structure NewsItem where
-  date : Date
-  body : List Markdown.Block
+/-! ## Home: a board of widgets
 
-/-- The news list: newest first, each item's date beside its text. -/
-def newsSection (items : List NewsItem) : List Html :=
-  if items.isEmpty then [] else [
-    el "section" [("class", "news")] [
-      el "h2" [] [txt "News"],
-      el "ul" [] <| items.map fun n =>
-        el "li" [] [
-          el "span" [("class", "note")] [dateTag n.date],
-          el "div" [] (Markdown.toHtml n.body)
-        ]
-    ]
-  ]
+The home page is a board of widgets, like an old forum's front page. Each
+is a light well headed by a silver bar, in the forum's look. They sit in two
+columns, the main one and a narrow side one, and on narrow screens in one,
+interleaved (see `.widgets` in style.css). -/
 
-/-- Recently played, in a container like the blog's: a header bar linking to
-the Last.fm profile, above the tracks. The build writes it empty and hidden,
-with nothing at all when there's no API key; `site.js` fetches the tracks in
-the browser, fills it in and shows it (see `Site/LastFm.lean`). -/
-def listeningSection (lastfmKey : Option String) : List Html :=
-  if lastfmKey.isNone then [] else [
-    el "section" [("class", "post-index panel listening"), ("aria-label", "Recently played"),
-        ("hidden", "")] [
-      el "div" [("class", "post-index-bar")] [link LastFm.profileUrl [txt "Recently played"]],
-      el "div" [("class", "post-index-list")] []
-    ]
+/-- A widget: a bar above a body. `key` names it (class `w-<key>`), which
+places it on the board. A hidden one is for `site.js` to fill in and show. -/
+def widget (key : String) (bar body : List Html) (hidden := false)
+    (label : Option String := none) (extra : String := "") : Html :=
+  let cls := s!"widget w-{key}" ++ (if extra.isEmpty then "" else s!" {extra}")
+  el "section" ([("class", cls)] ++ label.toList.map (("aria-label", ·)) ++
+      (if hidden then [("hidden", "")] else [])) [
+    el "div" [("class", "widget-bar")] bar,
+    el "div" [("class", "widget-body")] body
   ]
 
 /-- The "now" line: plain text naming the most recently updated projects and
@@ -242,26 +319,145 @@ def nowLine (recent : List GitHub.Repo) : List Html :=
       [txt ", and writing up solutions to "] ++ names solutions
   if sentence.isEmpty then [] else [el "p" [("class", "now")] (sentence ++ [txt "."])]
 
-/-- Pinned repositories, in the same dark container as Recently played. Nothing
-when they couldn't be fetched (no token); a note when nothing is pinned. -/
-def projectsSection (pinned : Option (List GitHub.Repo)) : List Html :=
-  match pinned with
-  | none => []
-  | some repos => [
-    el "section" [("class", "post-index panel projects"), ("aria-label", "Projects")] [
-      el "div" [("class", "post-index-bar")] [link GitHub.profileUrl [txt "Projects"]],
-      el "div" [("class", "post-index-list")] [
-        if repos.isEmpty then el "p" [("class", "note")] [txt "Nothing pinned yet."]
-        else el "ul" [] <| repos.map fun r =>
-          let details := (r.language.toList ++ (if r.stars > 0 then [s!"★ {r.stars}"] else []))
-          el "li" [] <|
-            [link r.url [txt r.name]] ++
-            (match r.description with | some d => [el "br", txt d] | none => []) ++
-            (if details.isEmpty then [] else
-              [el "br", el "span" [("class", "note")] [txt (" · ".intercalate details)]])
+/-- The welcome: the intro and the "now" line, as the board's sticky post. -/
+def welcomeWidget (intro : List Markdown.Block) (recent : List GitHub.Repo) : Html :=
+  widget "welcome" [el "span" [("class", "sticky")] [txt "Sticky:"], txt " Welcome"] [
+    el "section" [("class", "intro")] (Markdown.toHtml intro ++ nowLine recent)
+  ]
+
+/-- One row of the board index: a board, what it holds, how many entries it
+has (if known) and its latest entry. -/
+structure BoardRow where
+  title : String
+  href : String
+  blurb : String
+  count : Option Nat := none
+  /-- The latest entry, linked, and its date; nothing when there's none. -/
+  latest : Option (Html × Option Date) := none
+
+def Collection.boardRow (c : Collection) : BoardRow :=
+  { title := c.title, href := s!"/{c.key}/", blurb := c.blurb, count := some c.entries.length,
+    latest := c.entries.head?.map fun p => (link (postUrl p) [txt p.title], some p.date) }
+
+/-- The board index, as on an old forum's front page: each board with its
+count and its latest entry. -/
+def boardIndex (rows : List BoardRow) : Html :=
+  widget "board" [el "span" [] [txt "Board"], el "span" [] [txt "Entries"], el "span" [] [txt "Latest"]] [
+    el "ul" [("class", "rows board")] <| rows.map fun r =>
+      el "li" [] [
+        el "div" [] [link r.href [txt r.title], el "br", el "span" [("class", "note")] [txt r.blurb]],
+        el "span" [("class", "count")] [txt ((r.count.map toString).getD "–")],
+        el "div" [("class", "latest")] <| match r.latest with
+          | some (l, d) => [l] ++ (d.toList.map fun d => [el "br", el "span" [("class", "note")] [dateTag d]]).flatten
+          | none => [el "span" [("class", "note")] [txt "Nothing yet."]]
       ]
+  ] (label := some "Boards")
+
+/-- The board's rows: the collections. (Projects have their own widget.) -/
+def boardRows (ctx : Ctx) : List BoardRow :=
+  ctx.collections.map (·.boardRow)
+
+/-- What a widget says when the build couldn't fetch its part from GitHub. -/
+def githubFailed : Html :=
+  status "failed" "Couldn't reach GitHub when this page was built. It'll try again next time."
+
+/-- GitHub activity: the contribution calendar as a pegboard, a column per
+week and a hole per day, lit by how much happened that day. -/
+def activityWidget (cal : GitHub.Calendar) : Html :=
+  let pegs (w : List GitHub.Day) : List Html :=
+    w.map fun d =>
+      let s := if d.count == 1 then "" else "s"
+      el "span" [("class", s!"peg l{d.level}"), ("title", s!"{d.count} contribution{s} on {d.date.long}")] []
+  -- the first week can start mid-week: empty holes before it
+  let pad := match cal.weeks.head?.bind (·.head?) with
+    | some d => List.replicate d.date.weekday (el "span" [("class", "peg pad")] [])
+    | none => []
+  let weeks := cal.weeks.zipIdx.map fun (w, i) =>
+    el "span" [("class", "week")] ((if i == 0 then pad else []) ++ pegs w)
+  let s := if cal.total == 1 then "" else "s"
+  widget "activity" [link GitHub.profileUrl [txt "Activity"],
+      el "span" [("class", "bar-note")] [txt s!"{cal.total} contribution{s} in the last year"]] [
+    el "div" [("class", "pegboard"), ("aria-hidden", "true")] weeks
+  ] (label := some "GitHub activity")
+
+/-- One news item: its date and its Markdown body. -/
+structure NewsItem where
+  date : Date
+  body : List Markdown.Block
+
+/-- The news: newest first, each item's date above its text. -/
+def newsWidget (items : List NewsItem) : List Html :=
+  if items.isEmpty then [] else [
+    widget "news" [txt "News"] [
+      el "ul" [("class", "rows news")] <| items.map fun n =>
+        el "li" [] [
+          el "span" [("class", "note")] [dateTag n.date],
+          el "div" [] (Markdown.toHtml n.body)
+        ]
     ]
   ]
+
+/-- Pinned repositories, as a thread list: each name with its language (and
+stars, if any) on the right, its description beneath. Nothing when there's
+no token to fetch them with, a status when fetching them failed, and a note
+when nothing is pinned. -/
+def projectsWidget (pinned : Fetched (List GitHub.Repo)) : List Html :=
+  match pinned with
+  | .skipped => []
+  | .failed => [widget "projects" [link GitHub.profileUrl [txt "Projects"]] [githubFailed]
+      (label := some "Projects")]
+  | .ok repos => [
+    widget "projects" [link GitHub.profileUrl [txt "Projects"]] [
+      if repos.isEmpty then el "p" [("class", "note")] [txt "Nothing pinned yet."]
+      else el "ul" [("class", "rows")] <| repos.map fun r =>
+        let stars := if r.stars == 0 then [] else
+          [s!"{r.stars} star" ++ (if r.stars == 1 then "" else "s")]
+        let details := r.language.toList ++ stars
+        el "li" [] <|
+          [el "div" [("class", "proj")] ([link r.url [txt r.name]] ++
+            (if details.isEmpty then [] else
+              [el "span" [("class", "note")] ((details.map txt).intersperse (el "br"))]))] ++
+          (match r.description with | some d => [el "p" [("class", "note")] [txt d]] | none => [])
+    ] (label := some "Projects")
+  ]
+
+/-- A placeholder line of text for the skeleton: an empty groove, `width`
+(a class: `w1` longest to `w3` shortest) as long. -/
+def bone (width : String) : Html := el "span" [("class", s!"bone {width}")] []
+
+/-- Recently played, with nothing at all when there's no API key (see
+`Site/LastFm.lean`). The build writes it as a skeleton, the size of the real
+thing: the latest track's empty cover and grooves for its lines, and four
+rows like it. So the page doesn't jump when `site.js` has fetched the tracks
+and fills it in (the latest large, the ones before it as rows, the play
+count in the bar). Without JavaScript there's nothing to fill it with, so
+it says so instead. -/
+def listeningWidget (lastfmKey : Option String) : List Html :=
+  if lastfmKey.isNone then [] else
+  let skeleton (cover : String) (lines : List String) :=
+    [el "span" [("class", cover)] [], el "span" [("class", "track-text")] (lines.map bone)]
+  [ widget "listening" [link LastFm.profileUrl [txt "Recently played"],
+        el "span" [("class", "bar-note")] []] [
+      el "div" [("class", "np skeleton script-only"), ("aria-hidden", "true")]
+        (skeleton "cover large" ["w1", "w2", "w3"]),
+      el "ul" [("class", "rows skeleton script-only"), ("aria-hidden", "true")] <|
+        ["w2", "w1", "w2", "w1"].map fun w => el "li" [] (skeleton "cover" [w, "w3", "w3"]),
+      noscriptStatus "Turn on JavaScript to see what I've been listening to."
+    ] (label := some "Recently played") ]
+
+/-- Who's online, like the bottom of an old forum's front page: you and
+Domo. `site.js` adds what's playing, how often you've been here, and, as the
+last line, the owner's time ("All times are Stockholm time…"). -/
+def onlineWidget : Html :=
+  widget "online" [txt "Who's online"] [
+    el "ul" [("class", "rows online")] [
+      el "li" [] [txt "In here: you and ", el "span" [("class", "online-domo")] [txt "Domo"], txt "."],
+      el "li" [("class", "online-listening"), ("hidden", "")] [],
+      el "li" [("class", "online-visits"), ("hidden", "")] [],
+      el "li" [("class", "online-time note"), ("hidden", "")] []
+    ],
+    noscriptStatus "Turn on JavaScript to see what's playing, your visits and the time here."
+  ] (label := some "Who's online")
 
 /-- Everything the home page shows besides the left pane. -/
 structure Home where
@@ -269,24 +465,34 @@ structure Home where
   intro : List Markdown.Block := []
   /-- The most recently updated repositories, for the "now" line. -/
   recent : List GitHub.Repo := []
-  /-- Pinned repositories; `none` when they couldn't be fetched. -/
-  pinned : Option (List GitHub.Repo) := none
+  /-- Pinned repositories (skipped without a GitHub token). -/
+  pinned : Fetched (List GitHub.Repo) := .skipped
+  /-- The contribution calendar (skipped without a GitHub token). -/
+  contributions : Fetched GitHub.Calendar := .skipped
   news : List NewsItem := []
   /-- The Last.fm API key, for `site.js` to fetch recently played in the
   browser. It's read-only, so it's fine in the page. -/
   lastfmKey : Option String := none
 
-/-- The home page: the intro and the "now" line, the news, and the projects
-and recently played side by side. Then the site's script, which refreshes
-the "now" line and fills in recently played in the browser (see
-`static/site.js`). -/
+/-- The home page: a board of widgets. The main column has the welcome, the
+board index, the activity, and the news and projects side by side; the side
+column recently played and who's online. -/
 def home (ctx : Ctx) (h : Home := {}) : String :=
-  let panels := projectsSection h.pinned ++ listeningSection h.lastfmKey
-  layout ctx "/" none <|
-    [el "section" [("class", "intro")] (Markdown.toHtml h.intro ++ nowLine h.recent)] ++
-    newsSection h.news ++
-    (if panels.isEmpty then [] else [el "div" [("class", "panels")] panels]) ++
-    [.script "/site.js" (h.lastfmKey.toList.map fun k => ("data-lastfm-key", k))]
+  let main :=
+    [welcomeWidget h.intro h.recent, boardIndex (boardRows ctx)] ++
+    (match h.contributions with
+      | .skipped => []
+      | .failed => [widget "activity" [link GitHub.profileUrl [txt "Activity"]] [githubFailed]
+          (label := some "GitHub activity")]
+      | .ok cal => [activityWidget cal]) ++
+    [el "div" [("class", "widgets-pair")] (newsWidget h.news ++ projectsWidget h.pinned)]
+  let side := listeningWidget h.lastfmKey ++ [onlineWidget]
+  layout ctx "/" none [
+    el "div" [("class", "widgets")] [
+      el "div" [("class", "widgets-main")] main,
+      el "div" [("class", "widgets-side")] side
+    ]
+  ] (scriptData := h.lastfmKey.toList.map fun k => ("data-lastfm-key", k))
 
 /-- The table of contents for a page's sections, or nothing when it has
 fewer than two. A flat list; each entry's class (`d2`, `d3`, `d4`) is its
@@ -331,6 +537,9 @@ def comments (g : Giscus := {}) : Html :=
   el "section" [("class", "comments"), ("aria-label", "Comments")] [
     el "div" [("class", "comments-bar")] [txt "Comments"],
     el "div" [("class", "giscus")] [
+      -- until giscus's frame has loaded (site.js takes it away, or says it failed)
+      el "div" [("class", "giscus-wait script-only")] [status "loading" "Loading the comments…"],
+      noscriptStatus "Turn on JavaScript to read and write comments.",
       .script "https://giscus.app/client.js" [
         ("data-repo", g.repo), ("data-repo-id", g.repoId),
         ("data-category", g.category), ("data-category-id", g.categoryId),
@@ -361,5 +570,27 @@ def post (ctx : Ctx) (p : Post) : String :=
       comments
     ]
   ] (line := p.domo) (side := toc entries) (trail := [(coll, some s!"/{p.kind}/"), (p.title, none)])
+
+/-- The guestbook: a page anyone can leave a note on, as personal sites of
+the 2000s had. Its notes are giscus comments, like a post's, in the
+discussion for `/guestbook/`. `intro` is from `content/guestbook.md`, if
+there is one. -/
+def guestbookPage (ctx : Ctx) (intro : List Markdown.Block := []) : String :=
+  let body := if intro.isEmpty
+    then [el "p" [] [txt "Leave a note: sign in with GitHub to write one."]]
+    else Markdown.toHtml intro
+  layout ctx "/guestbook/" (some "Guestbook")
+    [el "article" [] ([el "h1" [] [txt "Guestbook"]] ++ body ++ [comments])]
+    (line := some "sign it. i'll read it.") (trail := [("Guestbook", none)])
+
+/-- What the search in the left pane searches (`/search.json`): every entry
+of every collection, newest first, with its title, address, summary, date,
+collection, and everything it says as plain text (`Markdown.searchText`). -/
+def searchIndex (ctx : Ctx) : String :=
+  Lean.Json.compress <| Lean.Json.arr <| (ctx.collections.flatMap fun c =>
+    c.entries.map fun p => Lean.Json.mkObj [
+      ("title", .str p.title), ("url", .str (postUrl p)),
+      ("summary", .str (p.summary.getD "")), ("date", .str p.date.long),
+      ("section", .str c.title), ("body", .str (Markdown.searchText p.body))]).toArray
 
 end Site.Pages

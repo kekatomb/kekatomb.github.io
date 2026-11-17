@@ -13,6 +13,26 @@ partial def Inline.plain : Inline → String
   | .lineBreak => " "
   | .note _ | .footRef _ => ""
 
+/-- An inline's words, for searching: its plain text, margin notes and all. -/
+partial def Inline.words : Inline → String
+  | .note xs => " " ++ String.join (xs.map Inline.words) ++ " "
+  | .emph xs | .strong xs | .link xs _ => String.join (xs.map Inline.words)
+  | i => i.plain
+
+/-- Everything a document says, as plain text for searching: every
+heading, paragraph, list item, quote, note, footnote and code block, in
+order, with runs of whitespace made one space. -/
+partial def Block.words : Block → String
+  | .heading _ xs | .para xs | .footnote _ xs => String.join (xs.map Inline.words)
+  | .codeBlock _ body => body
+  | .quote bs => " ".intercalate (bs.map Block.words)
+  | .ulist items | .olist _ items => " ".intercalate (items.map fun xs => String.join (xs.map Inline.words))
+  | .hr => ""
+
+def searchText (bs : List Block) : String :=
+  let all := (" ".intercalate (bs.map Block.words)).map fun c => if c.isWhitespace then ' ' else c
+  " ".intercalate ((all.splitOn " ").filter (!·.isEmpty))
+
 /-! ## Footnotes
 
 A footnote is numbered by where it's first referenced: `[^label]` in the

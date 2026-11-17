@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <!-- LinkedIn "in" mark with the letters cut out, in dark brushed metal, for light keys -->
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5a5a5a"/>
+      <stop offset="1" stop-color="#1e1e1e"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#metal)" fill-rule="evenodd" d="M2.6 0h10.8A2.6 2.6 0 0116 2.6v10.8a2.6 2.6 0 01-2.6 2.6H2.6A2.6 2.6 0 010 13.4V2.6A2.6 2.6 0 012.6 0z
+    M2.6 6h2.3v7.3H2.6z
+    M3.75 2.35a1.33 1.33 0 110 2.66 1.33 1.33 0 010-2.66z
+    M6.4 6h2.2v1c.35-.6 1.15-1.2 2.35-1.2 2.35 0 2.8 1.5 2.8 3.5v4H11.45V9.8c0-.85-.02-1.95-1.2-1.95-1.2 0-1.38.92-1.38 1.88v3.6H6.4z"/>
+</svg>
